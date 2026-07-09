@@ -16,8 +16,8 @@ const PHASES = {
   3: { builder: 'backend-builder', what: 'Implement services/plan_service.py, market_service.py, tools.py per §8, and tests/services/test_tools.py plus tests/domain/test_market.py per §12. Tests pass.' },
   4: { builder: 'backend-builder', what: 'Implement services/agent_service.py and all app/ modules (main.py with lifespan seed, config.py, dependencies.py, infrastructure/anthropic_client.py (thin AsyncAnthropic factory), api/routes_*.py, api/sse.py) per §9. Appendix A tests/services/test_agent_service.py and tests/api/test_api.py per §12 pass.' },
   5: { builder: 'backend-builder', what: 'Implement infrastructure/enrichment/zillow.py, fred.py, census.py, refresh.py per §10 and wire routes_admin.py refresh. Per-source isolation (R20); tests use mocked transports (R25). Tests pass.' },
-  6: { builder: 'frontend-builder', what: 'Scaffold frontend (package.json, vite.config.ts, tsconfig strict, tailwind). Copy Appendix A src/api/sse.test.ts verbatim, then implement types/domain.ts, types/events.ts, api/sse.ts, api/client.ts, state/chatStore.ts, state/plansStore.ts per §4/§9. vitest + tsc pass.' },
-  7: { builder: 'frontend-builder', what: 'Implement all components/ (chat/, data/, plan/, layout/) plus main.tsx and App.tsx two-pane layout per §4, R18, R30. tsc + vitest + vite build pass.' },
+  6: { builder: 'frontend-builder', what: 'Scaffold frontend (package.json, vite.config.ts, tsconfig strict, tailwind — encode the DESIGN.md tokens in the Tailwind config: colors, Inter typography, spacing, rounding). Copy Appendix A src/api/sse.test.ts verbatim, then implement types/domain.ts, types/events.ts, api/sse.ts, api/client.ts, state/chatStore.ts, state/plansStore.ts per §4/§9. vitest + tsc pass.' },
+  7: { builder: 'frontend-builder', what: 'Implement all components/ (chat/, data/, plan/, layout/) plus main.tsx and App.tsx two-pane layout per §4, R18, R30, styled strictly per DESIGN.md (card/button-primary tokens, accent+success charts, success for positive yields, shadow elevation). tsc + vitest + vite build pass.' },
   8: { builder: 'backend-builder', what: 'Docker and CI per §11: backend/Dockerfile (multi-stage, non-root, HEALTHCHECK), frontend/Dockerfile + nginx.conf, docker-compose.yml (named volume, healthy-dependency), .github/workflows/ci.yml (offline, R22), backend/.env.example complete.' },
   9: { builder: 'backend-builder', what: 'End-to-end pass: walk every §15 acceptance criterion, fix anything failing, confirm offline operation (R21) via the docker-smoke gate.' },
 }
@@ -26,7 +26,7 @@ const RULE_FAMILIES = [
   { key: 'layering', rules: 'R1–R4 (domain purity, ports-only services, single composition root, thin routers) and §3 sanctioned patterns' },
   { key: 'data', rules: 'R6–R11 (single DuckDB writer/connection, keyed upserts, explicit columns, UTC timestamps, alias joins) and §5 schema fidelity' },
   { key: 'contracts', rules: 'R12–R19 (engine invariants and §6 money rules, bounded momentum tilt, plan snapshot immutability, history truncation, SSE contract per §9)' },
-  { key: 'standards', rules: 'R5 and R20–R31 (line cap, enrichment isolation, offline operation, CI/secrets/pinning, test hygiene, code standards, accessibility) plus §16/§17 scope' },
+  { key: 'standards', rules: 'R5 and R20–R31 (line cap, enrichment isolation, offline operation, CI/secrets/pinning, test hygiene, code standards, accessibility) plus §16/§17 scope, plus the DESIGN.md visual identity for frontend code (tokens, component rules, layout)' },
 ]
 
 const FINDINGS_SCHEMA = {

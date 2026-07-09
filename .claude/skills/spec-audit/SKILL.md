@@ -5,7 +5,7 @@ description: Audit source changes against the hard rules (R1–R31) of arrived-a
 
 # Spec Audit
 
-Two layers: a mechanical script for greppable rules, and a judgment checklist for rules that need reading the code. Every finding cites a rule ID (R#) or section (§) from `arrived-agent-spec.md` (the spec's numbering has no R15) — no rule reference, no finding.
+Two layers: a mechanical script for greppable rules, and a judgment checklist for rules that need reading the code. Every finding cites a rule ID (R#) or section (§) from `arrived-agent-spec.md` (the spec's numbering has no R15), or a `DESIGN.md` section for visual-identity findings — no rule reference, no finding.
 
 Scope: audit the files/dirs you were given; if none, audit what `git status` and `git diff --name-only` show as changed. Families like DuckDB semantics need whole-module context — read the full module, not just the diff.
 
@@ -65,6 +65,11 @@ Apply the families relevant to the audited scope. For each entry: read the named
 - R28: no swallowed exceptions (bare `except`, `except: pass`, silent fallbacks).
 - R30: `aria-live="polite"` on the streaming message region; panes stack below the `md` breakpoint.
 - R31: docstrings on every module and public class/function.
+
+### Design identity (DESIGN.md — frontend only)
+- Colors/Typography: UI styles come from the DESIGN.md tokens (colors, Inter, spacing sm–xl, rounded sm/md/lg), ideally encoded once in the Tailwind config — ad-hoc hex values, other font families, or off-scale pixel values = violation.
+- Components: property cards use the `card` token values; primary actions use `button-primary`; charts use `accent` + `success`; positive yields/appreciation render in `success` = violations when ignored.
+- Layout: two-pane (fixed chat left, fluid data right) with the defined spacing scale; subtle `shadow-sm`/`shadow-md` elevation on surfaces — playful/bright off-palette colors or cluttered spacing = concern per Do's and Don'ts.
 
 ### Scope (§16, §17)
 - Nothing from §16 (fees, DCA, `ingest_runs`, auto-refresh scheduler, property-based tests, Parquet export, admin auth) or §17 exists in the tree.

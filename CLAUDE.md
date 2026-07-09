@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Greenfield. The only file is `arrived-agent-spec.md` — the **single source of truth** for what to build: a web app exploring fractional real-estate offerings (modeled on Arrived) with a Claude tool-use chat agent, a deterministic Python allocation engine, and a React data-explorer/plan UI. Read the spec before doing anything; this file is only an orientation layer and never overrides it.
+Greenfield. `arrived-agent-spec.md` is the **single source of truth** for what to build: a web app exploring fractional real-estate offerings (modeled on Arrived) with a Claude tool-use chat agent, a deterministic Python allocation engine, and a React data-explorer/plan UI. `DESIGN.md` is the **binding visual identity** for all UI work: design tokens (colors, Inter typography, spacing/rounding scales), component token values (card, button-primary), and layout rules. Read the spec before doing anything; this file is only an orientation layer and never overrides it.
 
 Key spec sections: §3 architecture rules · §4 file map (fixed responsibilities) · §6 allocation engine · §9 SSE contract · §15 build order + acceptance criteria · §16/§17 **deferred/out-of-scope — do not build those items**.
 
@@ -52,6 +52,7 @@ infrastructure (DuckDB repos, Anthropic adapter, enrichment fetchers, seeder) im
 - Money: integer-USD positions, $10 increments, $100 minimum; engine invariant `total_invested + unallocated == requested`.
 - Every plan output and agent plan reply carries the "hypothetical projection, not investment advice" disclaimer.
 - Secrets only via env; `.env.example` committed and complete.
+- Frontend UI follows `DESIGN.md`: its color/typography/spacing/rounding tokens and component rules — no invented colors or fonts; `success` (#10B981) marks positive yields; charts use `accent` + `success`.
 
 ## Project tooling (.claude/)
 
