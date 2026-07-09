@@ -1,0 +1,8 @@
+# Local-only artifacts — never committed (R23: secrets only via env).
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+data/
