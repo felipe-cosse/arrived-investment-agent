@@ -50,8 +50,13 @@ class Allocator:
         ids = self.market_ids.get(str(row["market"]), set())
         return str(row["id"]) not in ids and len(ids) >= MAX_POSITIONS_PER_MARKET
 
-    def grant(self, row: _Row, want: float) -> int:
-        """Grant up to `want` new dollars, capped by room/type share/budget; return it."""
+    def grant(self, row: _Row, want: float, *, allow_topup: bool = False) -> int:
+        """Grant up to `want` new dollars, capped by room/type share/budget; return it.
+
+        Sub-MIN grants go only to already-held names (§6 step 5); the step-6
+        top-up pass passes `allow_topup=True` to extend that waiver to names
+        allocated earlier in the same run.
+        """
         oid, ptype = str(row["id"]), str(row["property_type"])
         if self._market_blocked(row):
             return 0
@@ -61,8 +66,9 @@ class Allocator:
         take = floor_to_increment(min(want, room, share_room, self.remaining))
         if take <= 0:
             return 0
-        if take < MIN_POSITION_USD and oid not in self.existing and oid not in self.alloc:
-            return 0  # top-ups below MIN stay allowed for held/allocated names
+        if (take < MIN_POSITION_USD and oid not in self.existing
+                and not (allow_topup and oid in self.alloc)):
+            return 0  # §6 step 5: new-money grants below MIN only for held names
         self.alloc[oid] = self.alloc.get(oid, 0) + take
         self.type_used[ptype] = self.type_used.get(ptype, 0.0) + take
         self.remaining -= take

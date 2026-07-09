@@ -8,12 +8,22 @@ JSON text (VARCHAR) to avoid depending on the DuckDB JSON extension.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 from domain.models import PlanRecord
 from infrastructure.duckdb.connection import DuckDBConn
 
 _PLAN_COLS: tuple[str, ...] = ("id", "name", "created_at", "inputs", "output", "data_as_of")
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Re-tag a TIMESTAMP read back from DuckDB as UTC (R10 read path).
+
+    Columns store UTC wall clock but come back naive; without the re-tag their
+    ISO form lacks an offset and JS `Date` would parse it as local time.
+    """
+    return value.replace(tzinfo=UTC)
 
 
 class PlansRepo:
@@ -40,9 +50,9 @@ class PlansRepo:
             {
                 "id": str(r[0]),
                 "name": None if r[1] is None else str(r[1]),
-                "created_at": r[2].isoformat(),
+                "created_at": _as_utc(r[2]).isoformat(),
                 "inputs": json.loads(r[3]),
-                "data_as_of": r[4].isoformat(),
+                "data_as_of": _as_utc(r[4]).isoformat(),
             }
             for r in rows
         ]
@@ -56,10 +66,10 @@ class PlansRepo:
         return PlanRecord(
             id=str(row[0]),
             name=None if row[1] is None else str(row[1]),
-            created_at=row[2],
+            created_at=_as_utc(row[2]),
             inputs=json.loads(row[3]),
             output=json.loads(row[4]),
-            data_as_of=row[5],
+            data_as_of=_as_utc(row[5]),
         )
 
     def delete_plan(self, plan_id: str) -> bool:

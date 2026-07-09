@@ -7,6 +7,7 @@ offering markets resolve to canonical metros only through `market_aliases` (R11)
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from domain.models import MetricRow, Offering, ReturnRecord
@@ -109,7 +110,10 @@ class OfferingsRepo:
             row = cur.execute(f"SELECT count(*), {freshness} FROM {table}").fetchone()
             assert row is not None  # aggregates always return one row
             key = "latest_month" if table == "historical_returns" else "latest_as_of"
-            out[table] = {"rows": int(row[0]), key: row[1]}
+            latest = row[1]
+            if isinstance(latest, datetime):  # R10 read path: stored UTC comes back naive
+                latest = latest.replace(tzinfo=UTC)
+            out[table] = {"rows": int(row[0]), key: latest}
         return out
 
     # -- OfferingWriter ----------------------------------------------------

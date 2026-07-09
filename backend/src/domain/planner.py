@@ -107,7 +107,7 @@ class AllocationEngine:
             if state.remaining < INCREMENT_USD:
                 break
             if str(row["id"]) in state.alloc or str(row["id"]) in existing:
-                state.grant(row, state.remaining)
+                state.grant(row, state.remaining, allow_topup=True)
         return self._render(amount_usd, strategy, horizon_years, ranked, breakdowns,
                             state, momentum)
 
@@ -116,7 +116,11 @@ class AllocationEngine:
                           catalog: Mapping[str, _Row]) -> None:
         """Reserve the strategy's fund floor before the greedy fill (§6 step 4).
 
-        A 0% floor means no fund requirement, so the step is skipped entirely.
+        Interpretation (confirmed intended reading of §6): `fund_floor_pct == 0`
+        means no fund requirement at all — the step is skipped entirely, and the
+        `max(MIN_POSITION_USD, ...)` clamp in the target formula applies only
+        when a strategy actually demands a floor. Aggressive (0%) plans may
+        therefore hold no fund.
         """
         if strategy.fund_floor_pct <= 0:
             return

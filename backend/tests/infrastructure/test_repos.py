@@ -35,7 +35,7 @@ def _record(plan_id: str, created_at: datetime, name: str | None = None) -> Plan
 # -- upsert idempotency (R8) --------------------------------------------------
 
 
-def test_seed_twice_same_counts(repo: OfferingsRepo):
+def test_seed_twice_same_counts(repo: OfferingsRepo) -> None:
     """Re-running the seeder over a seeded database changes no row counts."""
     first = repo.stats()
     counts = seed_all(repo)  # second run; conftest fixture already seeded once
@@ -45,7 +45,7 @@ def test_seed_twice_same_counts(repo: OfferingsRepo):
         assert second[table]["rows"] == first[table]["rows"]
 
 
-def test_upsert_updates_in_place(repo: OfferingsRepo):
+def test_upsert_updates_in_place(repo: OfferingsRepo) -> None:
     """Upserting an existing id updates the row instead of duplicating it."""
     before = repo.get_offering("sfr-meridian")
     assert before is not None
@@ -57,7 +57,7 @@ def test_upsert_updates_in_place(repo: OfferingsRepo):
     assert len(repo.list_offerings()) == 11  # still exactly one row per id
 
 
-def test_upsert_alias_idempotent(repo: OfferingsRepo):
+def test_upsert_alias_idempotent(repo: OfferingsRepo) -> None:
     """Re-upserting an existing alias neither errors nor breaks resolution."""
     assert repo.upsert_market_aliases([("Nashville, TN", "nashville-tn")]) == 1
     assert repo.get_metro_for_market("Nashville, TN") == "nashville-tn"
@@ -66,7 +66,7 @@ def test_upsert_alias_idempotent(repo: OfferingsRepo):
 # -- alias join (R11) ----------------------------------------------------------
 
 
-def test_alias_join_resolves_every_non_fund_market(repo: OfferingsRepo):
+def test_alias_join_resolves_every_non_fund_market(repo: OfferingsRepo) -> None:
     """Every non-fund offering market resolves to a metro that has seeded metrics."""
     offerings = repo.list_offerings()
     assert len(offerings) == 11
@@ -80,7 +80,7 @@ def test_alias_join_resolves_every_non_fund_market(repo: OfferingsRepo):
         assert {m.metric for m in metrics} >= {"home_value_index", "rent_index"}
 
 
-def test_alias_unknown_market_resolves_to_none(repo: OfferingsRepo):
+def test_alias_unknown_market_resolves_to_none(repo: OfferingsRepo) -> None:
     """An unmapped raw market yields None rather than an inline string match."""
     assert repo.get_metro_for_market("Metropolis, KS") is None
 
@@ -88,26 +88,43 @@ def test_alias_unknown_market_resolves_to_none(repo: OfferingsRepo):
 # -- UTC timestamps (R10) --------------------------------------------------------
 
 
-def test_connection_pins_utc_session_timezone(conn: DuckDBConn):
+def test_connection_pins_utc_session_timezone(conn: DuckDBConn) -> None:
     """The session TimeZone is UTC so TIMESTAMPTZ→TIMESTAMP casts never use host time."""
     row = conn.cursor().execute("SELECT current_setting('TimeZone')").fetchone()
     assert row == ("UTC",)
 
 
-def test_tz_aware_timestamp_round_trips_as_utc(plans: PlansRepo):
-    """A tz-aware created_at is stored and read back as its exact UTC wall clock."""
+def test_tz_aware_timestamp_round_trips_as_utc(plans: PlansRepo) -> None:
+    """A tz-aware created_at is stored and read back as its exact UTC instant."""
     eastern = datetime(2026, 7, 9, 13, 3, 9, tzinfo=timezone(timedelta(hours=-5)))
     plans.save(_record("plan-utc", eastern))
     got = plans.get_plan("plan-utc")
     assert got is not None
-    assert got.created_at == datetime(2026, 7, 9, 18, 3, 9)  # UTC, naive on read
-    assert got.data_as_of == datetime(2026, 7, 9, 18, 3, 9)
+    assert got.created_at == datetime(2026, 7, 9, 18, 3, 9, tzinfo=UTC)  # re-tagged UTC on read
+    assert got.data_as_of == datetime(2026, 7, 9, 18, 3, 9, tzinfo=UTC)
+
+
+def test_read_timestamps_serialize_with_utc_offset(repo: OfferingsRepo,
+                                                   plans: PlansRepo) -> None:
+    """Every read-path timestamp carries an explicit UTC offset (R10 read path).
+
+    Offset-less ISO strings parse as *local* time in JS Date, which would skew
+    the frontend StalenessBadge; +00:00 must survive serialization.
+    """
+    plans.save(_record("plan-tz", datetime(2026, 4, 1, tzinfo=UTC)))
+    summary = plans.list_plans()[0]
+    assert summary["created_at"].endswith("+00:00")
+    assert summary["data_as_of"].endswith("+00:00")
+    stats = repo.stats()
+    for table in ("offerings", "market_metrics"):
+        latest = stats[table]["latest_as_of"]
+        assert latest.utcoffset() == timedelta(0), table
 
 
 # -- plans CRUD ----------------------------------------------------------------
 
 
-def test_plans_save_and_get_roundtrip(plans: PlansRepo):
+def test_plans_save_and_get_roundtrip(plans: PlansRepo) -> None:
     """Save returns the id and get_plan round-trips inputs/output JSON intact."""
     record = _record("plan-1", datetime(2026, 1, 15, 12, 0, tzinfo=UTC), name="First")
     assert plans.save(record) == "plan-1"
@@ -119,7 +136,7 @@ def test_plans_save_and_get_roundtrip(plans: PlansRepo):
     assert got.output == record.output
 
 
-def test_plans_list_newest_first_summaries(plans: PlansRepo):
+def test_plans_list_newest_first_summaries(plans: PlansRepo) -> None:
     """list_plans returns newest-first summaries without the full output blob."""
     plans.save(_record("plan-old", datetime(2026, 1, 1, tzinfo=UTC)))
     plans.save(_record("plan-new", datetime(2026, 2, 1, tzinfo=UTC), name="Newer"))
@@ -130,7 +147,7 @@ def test_plans_list_newest_first_summaries(plans: PlansRepo):
     assert listed[0]["inputs"]["amount"] == 2000
 
 
-def test_plans_delete(plans: PlansRepo):
+def test_plans_delete(plans: PlansRepo) -> None:
     """delete_plan removes the row once and reports False afterwards."""
     plans.save(_record("plan-del", datetime(2026, 3, 1, tzinfo=UTC)))
     assert plans.delete_plan("plan-del") is True
@@ -138,14 +155,14 @@ def test_plans_delete(plans: PlansRepo):
     assert plans.delete_plan("plan-del") is False
 
 
-def test_plans_stats_counts_rows(plans: PlansRepo):
+def test_plans_stats_counts_rows(plans: PlansRepo) -> None:
     """stats reports the plans row count for /api/meta."""
     assert plans.stats() == {"rows": 0}
     plans.save(_record("plan-a", datetime(2026, 1, 1, tzinfo=UTC)))
     assert plans.stats() == {"rows": 1}
 
 
-def test_get_unknown_plan_is_none(plans: PlansRepo):
+def test_get_unknown_plan_is_none(plans: PlansRepo) -> None:
     """get_plan returns None for an id that was never saved."""
     assert plans.get_plan("no-such-plan") is None
 
@@ -153,7 +170,7 @@ def test_get_unknown_plan_is_none(plans: PlansRepo):
 # -- snapshot immutability (R16) -------------------------------------------------
 
 
-def test_snapshot_unchanged_by_metric_refresh(repo: OfferingsRepo, plans: PlansRepo):
+def test_snapshot_unchanged_by_metric_refresh(repo: OfferingsRepo, plans: PlansRepo) -> None:
     """A market-metrics refresh after saving must not alter the stored snapshot."""
     plans.save(_record("plan-frozen", datetime(2026, 1, 1, tzinfo=UTC), name="Frozen"))
     before = plans.get_plan("plan-frozen")
