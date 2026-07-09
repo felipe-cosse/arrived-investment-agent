@@ -74,6 +74,10 @@ class DuckDBConn:
         path = Path(db_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = duckdb.connect(str(path))
+        # R10: pin the zone GLOBALLY so every cursor() session inherits it and
+        # DuckDB's implicit TIMESTAMPTZ->TIMESTAMP cast stores bound tz-aware
+        # datetimes as UTC wall clock, never host local time.
+        self._conn.execute("SET GLOBAL TimeZone='UTC'")
         for statement in _SCHEMA_STATEMENTS:
             self._conn.execute(statement)
         logger.info("duckdb_opened path=%s", path)
