@@ -14,7 +14,7 @@ const PHASES = {
   1: { builder: 'backend-builder', what: 'Scaffold backend/pyproject.toml (deps + ruff/mypy/pytest config, asyncio_mode = auto) if missing. Copy Appendix A backend tests verbatim: tests/conftest.py, tests/domain/test_planner.py, tests/services/test_agent_service.py. Then implement the domain layer per §6/§7: domain/models.py, ports.py, risk.py, planner.py, market.py. tests/domain/test_planner.py must pass.' },
   2: { builder: 'backend-builder', what: 'Implement infrastructure/duckdb/connection.py, offerings_repo.py, plans_repo.py and infrastructure/seed.py per §5/§10. Write tests/infrastructure/test_repos.py per §12 (upsert idempotency, alias join, plans CRUD, snapshot immutability). All repo tests pass.' },
   3: { builder: 'backend-builder', what: 'Implement services/plan_service.py, market_service.py, tools.py per §8, and tests/services/test_tools.py plus tests/domain/test_market.py per §12. Tests pass.' },
-  4: { builder: 'backend-builder', what: 'Implement services/agent_service.py and all app/ modules (main.py with lifespan seed, config.py, dependencies.py, api/routes_*.py, api/sse.py) per §9. Appendix A tests/services/test_agent_service.py and tests/api/test_api.py per §12 pass.' },
+  4: { builder: 'backend-builder', what: 'Implement services/agent_service.py and all app/ modules (main.py with lifespan seed, config.py, dependencies.py, infrastructure/anthropic_client.py (thin AsyncAnthropic factory), api/routes_*.py, api/sse.py) per §9. Appendix A tests/services/test_agent_service.py and tests/api/test_api.py per §12 pass.' },
   5: { builder: 'backend-builder', what: 'Implement infrastructure/enrichment/zillow.py, fred.py, census.py, refresh.py per §10 and wire routes_admin.py refresh. Per-source isolation (R20); tests use mocked transports (R25). Tests pass.' },
   6: { builder: 'frontend-builder', what: 'Scaffold frontend (package.json, vite.config.ts, tsconfig strict, tailwind). Copy Appendix A src/api/sse.test.ts verbatim, then implement types/domain.ts, types/events.ts, api/sse.ts, api/client.ts, state/chatStore.ts, state/plansStore.ts per §4/§9. vitest + tsc pass.' },
   7: { builder: 'frontend-builder', what: 'Implement all components/ (chat/, data/, plan/, layout/) plus main.tsx and App.tsx two-pane layout per §4, R18, R30. tsc + vitest + vite build pass.' },
@@ -127,7 +127,7 @@ async function verify(round) {
   log('verifier returned nothing; retrying once')
   const second = await run()
   if (second) return second
-  return { passed: false, gates: [{ name: 'verifier', status: 'fail', evidence: 'verifier agent failed twice' }] }
+  return { passed: false, synthetic: true, gates: [{ name: 'verifier', status: 'fail', evidence: 'verifier agent failed twice' }] }
 }
 
 async function fixRound(round, violations, failedGates) {
@@ -163,6 +163,10 @@ let round = 1
 while (true) {
   const violations = auditRes.findings.filter((f) => f.severity === 'violation')
   const failedGates = (gates.gates || []).filter((g) => g.status === 'fail')
+  if (gates.synthetic) {
+    log('verifier unavailable after retries; stopping fix loop — gates unknown')
+    break
+  }
   if (!violations.length && !failedGates.length) break
   if (round >= MAX_ROUNDS) {
     log('Round cap reached with open items: ' + violations.length + ' violation(s), ' + failedGates.length + ' failed gate(s)')

@@ -59,6 +59,7 @@ Pass: final line `PASS: no mechanical findings` (NOTE lines are fine).
 ### 8. docker-smoke — only when docker-compose.yml exists, or on explicit request
 Proves R21: the stack works offline with no keys. `$SCRATCH` is the session scratchpad.
 ```bash
+[ -f backend/.env ] || touch backend/.env   # compose uses env_file; a fresh clone has none
 docker compose up --build -d
 curl -sf http://localhost:8000/api/health
 curl -s http://localhost:8000/api/offerings | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))'

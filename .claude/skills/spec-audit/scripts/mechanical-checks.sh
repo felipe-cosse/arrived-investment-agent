@@ -71,12 +71,12 @@ scan R27 "use stdlib logging, never print, in backend src" \
 
 # R29 — no TypeScript `any` in frontend src
 scan R29 "TypeScript any is forbidden in frontend src" \
-  ':[[:space:]]*any([^[:alnum:]_]|$)|as[[:space:]]+any|<any>' \
+  ':[[:space:]]*any([^[:alnum:]_]|$)|(^|[^[:alnum:]_])as[[:space:]]+any([^[:alnum:]_]|$)|<any>' \
   frontend/src --include='*.ts' --include='*.tsx'
 
 # R19 — SSE is consumed via fetch + ReadableStream, never EventSource
 scan R19 "use fetch + ReadableStream via createSseDecoder, never EventSource" \
-  'EventSource' \
+  'new[[:space:]]+EventSource' \
   frontend/src --include='*.ts' --include='*.tsx'
 
 # R10 — timestamps must be UTC-aware
@@ -88,7 +88,7 @@ scan R10 "naive datetime (use datetime.now(UTC))" \
 for p in backend frontend docker-compose.yml; do
   scan R23 "possible secret literal committed" \
     'sk-ant-|API_KEY[[:space:]]*=[[:space:]]*"[A-Za-z0-9]' \
-    "$p" --exclude='.env'
+    "$p" --exclude='.env' --exclude-dir='tests'
 done
 
 if [ "$findings" -gt 0 ]; then

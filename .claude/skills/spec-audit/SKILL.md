@@ -5,7 +5,7 @@ description: Audit source changes against the hard rules (R1–R31) of arrived-a
 
 # Spec Audit
 
-Two layers: a mechanical script for greppable rules, and a judgment checklist for rules that need reading the code. Every finding cites a rule ID (R#) or section (§) from `arrived-agent-spec.md` — no rule reference, no finding.
+Two layers: a mechanical script for greppable rules, and a judgment checklist for rules that need reading the code. Every finding cites a rule ID (R#) or section (§) from `arrived-agent-spec.md` (the spec's numbering has no R15) — no rule reference, no finding.
 
 Scope: audit the files/dirs you were given; if none, audit what `git status` and `git diff --name-only` show as changed. Families like DuckDB semantics need whole-module context — read the full module, not just the diff.
 
