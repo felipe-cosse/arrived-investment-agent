@@ -10,7 +10,7 @@ The repo is greenfield: `arrived-agent-spec.md` (v3 build spec, single source of
 
 ## Deliverables
 
-```
+```text
 .claude/
 ├── agents/
 │   ├── backend-builder.md
