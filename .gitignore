@@ -5,4 +5,11 @@ __pycache__/
 *.pyc
 dist/
 .DS_Store
-.claude/settings.local.json
+
+# Local-only: Claude tooling, docs, spec, and design files stay out of the repo
+.claude/
+.superpowers/
+docs/
+arrived-agent-spec.md
+CLAUDE.md
+DESIGN.md
