@@ -22,6 +22,14 @@ _RETURN_COLS: tuple[str, ...] = ("offering_id", "month", "dividend_per_share", "
 _METRIC_COLS: tuple[str, ...] = ("metro", "month", "source", "metric", "value", "as_of")
 
 
+def _tag_utc(row: dict[str, Any]) -> dict[str, Any]:
+    """Re-tag a naive `as_of` read from DuckDB as UTC before model construction (R10)."""
+    as_of = row["as_of"]
+    if isinstance(as_of, datetime) and as_of.tzinfo is None:
+        row["as_of"] = as_of.replace(tzinfo=UTC)
+    return row
+
+
 def _upsert_sql(table: str, cols: Sequence[str], keys: Sequence[str]) -> str:
     """Build an idempotent `INSERT ... ON CONFLICT DO UPDATE` statement (R8)."""
     updates = ", ".join(f"{c} = excluded.{c}" for c in cols if c not in keys)
@@ -65,7 +73,8 @@ class OfferingsRepo:
             sql += " LIMIT ?"
             params.append(int(limit))
         rows = self._conn.cursor().execute(sql, params).fetchall()
-        return [Offering.model_validate(dict(zip(_OFFERING_COLS, r, strict=True))) for r in rows]
+        return [Offering.model_validate(_tag_utc(dict(zip(_OFFERING_COLS, r, strict=True))))
+                for r in rows]
 
     def get_offering(self, offering_id: str) -> Offering | None:
         """Return one offering by id, or None when unknown."""
@@ -74,7 +83,7 @@ class OfferingsRepo:
             [offering_id]).fetchone()
         if row is None:
             return None
-        return Offering.model_validate(dict(zip(_OFFERING_COLS, row, strict=True)))
+        return Offering.model_validate(_tag_utc(dict(zip(_OFFERING_COLS, row, strict=True))))
 
     def get_returns(self, offering_id: str, months: int) -> list[ReturnRecord]:
         """Return up to `months` most recent monthly records, oldest first."""
@@ -91,7 +100,7 @@ class OfferingsRepo:
             f"SELECT {', '.join(_METRIC_COLS)} FROM market_metrics "
             "WHERE metro = ? ORDER BY month, source, metric", [metro]).fetchall()
         recent = set(sorted({str(r[1]) for r in rows})[-int(months):])
-        return [MetricRow.model_validate(dict(zip(_METRIC_COLS, r, strict=True)))
+        return [MetricRow.model_validate(_tag_utc(dict(zip(_METRIC_COLS, r, strict=True))))
                 for r in rows if str(r[1]) in recent]
 
     def get_metro_for_market(self, raw_market: str) -> str | None:

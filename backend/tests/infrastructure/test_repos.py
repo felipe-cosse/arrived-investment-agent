@@ -119,6 +119,13 @@ def test_read_timestamps_serialize_with_utc_offset(repo: OfferingsRepo,
     for table in ("offerings", "market_metrics"):
         latest = stats[table]["latest_as_of"]
         assert latest.utcoffset() == timedelta(0), table
+    offering = repo.get_offering("sfr-meridian")
+    assert offering is not None
+    assert offering.as_of.utcoffset() == timedelta(0)
+    assert all(o.as_of.utcoffset() == timedelta(0) for o in repo.list_offerings())
+    metrics = repo.get_market_metrics("nashville-tn", 24)
+    assert metrics
+    assert all(m.as_of.utcoffset() == timedelta(0) for m in metrics)
 
 
 # -- plans CRUD ----------------------------------------------------------------

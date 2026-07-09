@@ -19,7 +19,7 @@ from services.tools import RESULT_EVENTS, ToolDispatcher
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_MAX_TOKENS = 4096
 MAX_AGENT_TURNS = 8
 MAX_HISTORY_MESSAGES = 40
