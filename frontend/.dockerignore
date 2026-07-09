@@ -1,0 +1,7 @@
+# Keep the build context minimal and secrets out of images (R23, §11).
+node_modules/
+dist/
+.env
+.env.example
+Dockerfile
+.dockerignore

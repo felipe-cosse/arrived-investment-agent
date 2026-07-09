@@ -5,17 +5,19 @@
 
 import type { Config } from "tailwindcss";
 
+import { ACCENT, BACKGROUND, PRIMARY, SECONDARY, SUCCESS, SURFACE } from "./src/lib/tokens";
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        primary: "#111827",
-        secondary: "#4B5563",
-        accent: "#2563EB",
-        success: "#10B981",
-        background: "#F9FAFB",
-        surface: "#FFFFFF",
+        primary: PRIMARY,
+        secondary: SECONDARY,
+        accent: ACCENT,
+        success: SUCCESS,
+        background: BACKGROUND,
+        surface: SURFACE,
       },
       fontFamily: {
         sans: ["Inter", "sans-serif"],

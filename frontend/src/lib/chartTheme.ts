@@ -1,20 +1,18 @@
 /** Recharts theme constants derived from the DESIGN.md color tokens.
  *
  * SVG chart props need literal color strings — Tailwind classes cannot reach
- * them — so the token hexes live here (matching `tailwind.config.ts`) and every
- * derived value is computed from them. Charts use `accent` + `success` per
+ * them — so the token hexes are imported from `./tokens` (matching
+ * `tailwind.config.ts`, both single-sourced from DESIGN.md) and every derived
+ * value here is computed from them. Charts use `accent` + `success` per
  * DESIGN.md; the donut's accent-tint ramp was validated with the dataviz
  * palette checker (lightness band, chroma floor, CVD separation) and ships
  * with a legend, surface gaps, and a table view as contrast relief.
  */
 
 import { usd } from "./format";
+import { ACCENT, PRIMARY, SECONDARY, SUCCESS, SURFACE } from "./tokens";
 
-export const ACCENT = "#2563EB";
-export const SUCCESS = "#10B981";
-export const PRIMARY = "#111827";
-export const SECONDARY = "#4B5563";
-export const SURFACE = "#FFFFFF";
+export { ACCENT, SUCCESS, PRIMARY, SECONDARY, SURFACE };
 
 /** Mix a token toward the white surface — `strength` 1 is the token itself. */
 export function tint(hex: string, strength: number): string {

@@ -1,0 +1,13 @@
+# Keep the build context minimal and secrets out of images (R23, §11).
+.venv/
+.env
+.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+data/
+tests/
+Dockerfile
+.dockerignore
