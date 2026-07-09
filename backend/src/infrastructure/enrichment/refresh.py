@@ -9,7 +9,9 @@ entrypoint below, which is for use only while the API is stopped (R6)."""
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from domain.ports import MarketDataSource, OfferingReader, OfferingWriter
@@ -77,17 +79,20 @@ def build_sources(
 
 def main() -> None:
     """CLI refresh for use only while the API is stopped — DuckDB has one writer (R6)."""
-    # CLI-only composition: the running app wires these in app/dependencies.py (R3).
-    from app.config import Settings
+    # CLI-only composition straight from the environment (§13): infrastructure
+    # never imports app — dependencies point inward only (§3). The running app
+    # wires the same sources from Settings in app/dependencies.py (R3).
     from infrastructure.duckdb.connection import DuckDBConn
     from infrastructure.duckdb.offerings_repo import OfferingsRepo
+    from infrastructure.enrichment.zillow import ZHVI_DEFAULT_URL, ZORI_DEFAULT_URL
 
     logging.basicConfig(level=logging.INFO)
-    settings = Settings()
     sources = build_sources(
-        zhvi_url=settings.zillow_zhvi_url, zori_url=settings.zillow_zori_url,
-        fred_api_key=settings.fred_api_key, census_api_key=settings.census_api_key)
-    conn = DuckDBConn(settings.db_path)
+        zhvi_url=os.environ.get("ZILLOW_ZHVI_URL", ZHVI_DEFAULT_URL),
+        zori_url=os.environ.get("ZILLOW_ZORI_URL", ZORI_DEFAULT_URL),
+        fred_api_key=os.environ.get("FRED_API_KEY"),
+        census_api_key=os.environ.get("CENSUS_API_KEY"))
+    conn = DuckDBConn(Path(os.environ.get("DB_PATH", "data/arrived.duckdb")))
     try:
         repo = OfferingsRepo(conn)
         results = refresh_all(sources, reader=repo, writer=repo)

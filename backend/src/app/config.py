@@ -9,16 +9,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_ZHVI_DEFAULT = (
-    "https://files.zillowstatic.com/research/public_csvs/zhvi/"
-    "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv"
-)
-_ZORI_DEFAULT = (
-    "https://files.zillowstatic.com/research/public_csvs/zori/"
-    "Metro_zori_uc_sfrcondo_sm_sa_month.csv"
-)
+# The Zillow adapter owns its default CSV URLs; app importing infrastructure is
+# the same inward direction the composition root uses (§3, R3).
+from infrastructure.enrichment.zillow import ZHVI_DEFAULT_URL, ZORI_DEFAULT_URL
 
 
 class Settings(BaseSettings):
@@ -30,13 +26,14 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5"
     max_tokens: int = 4096
     max_agent_turns: int = 8
-    max_history_messages: int = 40  # server-side truncation (R17)
+    # Server-side truncation (R17): >= 1 so the limit can never disable truncation.
+    max_history_messages: int = Field(default=40, ge=1)
     db_path: Path = Path("data/arrived.duckdb")
     cors_origins: str = "http://localhost:5173"  # comma-separated; dev only
     fred_api_key: str | None = None
     census_api_key: str | None = None
-    zillow_zhvi_url: str = _ZHVI_DEFAULT
-    zillow_zori_url: str = _ZORI_DEFAULT
+    zillow_zhvi_url: str = ZHVI_DEFAULT_URL
+    zillow_zori_url: str = ZORI_DEFAULT_URL
 
     @property
     def cors_origin_list(self) -> list[str]:

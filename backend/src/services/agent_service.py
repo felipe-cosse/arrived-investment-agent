@@ -23,6 +23,9 @@ DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_MAX_TOKENS = 4096
 MAX_AGENT_TURNS = 8
 MAX_HISTORY_MESSAGES = 40
+# §9 pins the done-event union; the live API can return other stop reasons
+# (stop_sequence, refusal, ...) which map conservatively to end_turn.
+DONE_STOP_REASONS = frozenset({"end_turn", "max_tokens", "max_turns"})
 
 SYSTEM_PROMPT = (
     "You are the Arrived investment research agent for fractional real-estate offerings.\n"
@@ -45,6 +48,12 @@ SYSTEM_PROMPT = (
 def sse(event: str, data: dict[str, Any]) -> str:
     """Format one SSE frame per the §9 contract: event line + single-line JSON data."""
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def _normalize_stop_reason(stop_reason: Any) -> str:
+    """Clamp a final stop_reason to the §9 done union; anything else becomes end_turn."""
+    reason = str(stop_reason)
+    return reason if reason in DONE_STOP_REASONS else "end_turn"
 
 
 def _stream_frame(event: Any) -> str | None:
@@ -84,7 +93,9 @@ class AgentService:
 
     async def run(self, messages: list[dict[str, Any]]) -> AsyncIterator[str]:
         """Yield SSE frames for one exchange; always ends with `done` or `error`."""
-        convo = list(messages)[-self._max_history:]  # server-side truncation (R17)
+        # Server-side truncation (R17); the floor keeps truncation active even if
+        # a caller slips past Settings validation with max_history <= 0.
+        convo = list(messages)[-max(1, self._max_history):]
         try:
             for _ in range(self._max_turns):
                 async with self._llm.stream(model=self._model, max_tokens=self._max_tokens,
@@ -96,7 +107,7 @@ class AgentService:
                             yield frame
                     final = await stream.get_final_message()
                 if final.stop_reason != "tool_use":
-                    yield sse("done", {"stop_reason": final.stop_reason})
+                    yield sse("done", {"stop_reason": _normalize_stop_reason(final.stop_reason)})
                     return
                 convo.append({"role": "assistant",
                               "content": [_block_dict(b) for b in final.content]})

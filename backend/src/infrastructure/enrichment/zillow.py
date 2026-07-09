@@ -21,6 +21,17 @@ from domain.models import MetricRow
 
 logger = logging.getLogger(__name__)
 
+# Canonical research-CSV defaults (§13): the single source of truth for both the
+# app Settings defaults and the stopped-API CLI in refresh.py.
+ZHVI_DEFAULT_URL = (
+    "https://files.zillowstatic.com/research/public_csvs/zhvi/"
+    "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv"
+)
+ZORI_DEFAULT_URL = (
+    "https://files.zillowstatic.com/research/public_csvs/zori/"
+    "Metro_zori_uc_sfrcondo_sm_sa_month.csv"
+)
+
 # Latest month plus 12 back fits the YoY window (§7) with margin; keeping the
 # emitted history bounded also keeps annual census rows inside the repo's
 # recent-months read window.

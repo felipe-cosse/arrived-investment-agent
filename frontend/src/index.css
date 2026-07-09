@@ -1,0 +1,12 @@
+/* Tailwind entry: the DESIGN.md tokens live in tailwind.config.ts; base styles
+ * apply the background/text/typography tokens app-wide. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background font-sans text-body text-primary antialiased;
+  }
+}
