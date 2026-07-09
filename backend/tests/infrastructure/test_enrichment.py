@@ -17,7 +17,12 @@ from infrastructure.duckdb.offerings_repo import OfferingsRepo
 from infrastructure.enrichment.census import CensusSource
 from infrastructure.enrichment.fred import FredSource
 from infrastructure.enrichment.refresh import MissingApiKeyError, build_sources, refresh_all
-from infrastructure.enrichment.zillow import MONTHS_KEPT, ZillowSource
+from infrastructure.enrichment.zillow import (
+    MONTHS_KEPT,
+    ZHVI_DEFAULT_URL,
+    ZORI_DEFAULT_URL,
+    ZillowSource,
+)
 
 ZHVI_URL = "https://zillow.test/zhvi.csv"
 
@@ -158,3 +163,12 @@ def test_build_sources_wires_all_four_providers() -> None:
     sources = build_sources(zhvi_url="https://z.test/zhvi.csv", zori_url="https://z.test/zori.csv",
                             fred_api_key=None, census_api_key=None)
     assert [s.name for s in sources] == ["zillow_zhvi", "zillow_zori", "fred", "census_acs"]
+
+
+def test_build_sources_defaults_zillow_urls_when_unset() -> None:
+    """None URLs (the Settings defaults, R3) fall back to the adapter's canonical CSVs."""
+    sources = build_sources(zhvi_url=None, zori_url=None, fred_api_key=None, census_api_key=None)
+    zhvi, zori = sources[0], sources[1]
+    assert isinstance(zhvi, ZillowSource) and isinstance(zori, ZillowSource)
+    assert zhvi._url == ZHVI_DEFAULT_URL
+    assert zori._url == ZORI_DEFAULT_URL

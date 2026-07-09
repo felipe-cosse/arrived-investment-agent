@@ -12,10 +12,6 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# The Zillow adapter owns its default CSV URLs; app importing infrastructure is
-# the same inward direction the composition root uses (§3, R3).
-from infrastructure.enrichment.zillow import ZHVI_DEFAULT_URL, ZORI_DEFAULT_URL
-
 
 class Settings(BaseSettings):
     """Environment-driven application settings (spec §13)."""
@@ -32,8 +28,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"  # comma-separated; dev only
     fred_api_key: str | None = None
     census_api_key: str | None = None
-    zillow_zhvi_url: str = ZHVI_DEFAULT_URL
-    zillow_zori_url: str = ZORI_DEFAULT_URL
+    # None means "use the Zillow adapter's canonical research-CSV URL": the
+    # defaults live with the adapter, applied in build_sources, so app never
+    # imports infrastructure outside the composition root (§3, R3).
+    zillow_zhvi_url: str | None = None
+    zillow_zori_url: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:

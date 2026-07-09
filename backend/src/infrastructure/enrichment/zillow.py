@@ -21,8 +21,9 @@ from domain.models import MetricRow
 
 logger = logging.getLogger(__name__)
 
-# Canonical research-CSV defaults (§13): the single source of truth for both the
-# app Settings defaults and the stopped-API CLI in refresh.py.
+# Canonical research-CSV defaults (§13): applied by `build_sources` whenever no
+# ZILLOW_*_URL override is configured — Settings and the stopped-API CLI both
+# pass None through, so only infrastructure ever names these URLs (R3).
 ZHVI_DEFAULT_URL = (
     "https://files.zillowstatic.com/research/public_csvs/zhvi/"
     "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv"

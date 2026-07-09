@@ -57,21 +57,25 @@ def refresh_all(
 
 def build_sources(
     *,
-    zhvi_url: str,
-    zori_url: str,
+    zhvi_url: str | None,
+    zori_url: str | None,
     fred_api_key: str | None,
     census_api_key: str | None,
 ) -> list[MarketDataSource]:
-    """All four providers (§10); keyless ones stay listed so they report skipped_no_key (§9)."""
+    """All four providers (§10); keyless ones stay listed so they report skipped_no_key (§9).
+
+    A None (or empty) Zillow URL falls back to the adapter's canonical
+    research-CSV default, so callers never need to know infrastructure URLs.
+    """
     # Imported here, not at module level: the adapters import MissingApiKeyError
     # from this module, so a top-level import would be circular.
     from infrastructure.enrichment.census import CensusSource
     from infrastructure.enrichment.fred import FredSource
-    from infrastructure.enrichment.zillow import ZillowSource
+    from infrastructure.enrichment.zillow import ZHVI_DEFAULT_URL, ZORI_DEFAULT_URL, ZillowSource
 
     return [
-        ZillowSource("zillow_zhvi", zhvi_url, "home_value_index"),
-        ZillowSource("zillow_zori", zori_url, "rent_index"),
+        ZillowSource("zillow_zhvi", zhvi_url or ZHVI_DEFAULT_URL, "home_value_index"),
+        ZillowSource("zillow_zori", zori_url or ZORI_DEFAULT_URL, "rent_index"),
         FredSource(fred_api_key),
         CensusSource(census_api_key),
     ]
@@ -84,12 +88,11 @@ def main() -> None:
     # wires the same sources from Settings in app/dependencies.py (R3).
     from infrastructure.duckdb.connection import DuckDBConn
     from infrastructure.duckdb.offerings_repo import OfferingsRepo
-    from infrastructure.enrichment.zillow import ZHVI_DEFAULT_URL, ZORI_DEFAULT_URL
 
     logging.basicConfig(level=logging.INFO)
     sources = build_sources(
-        zhvi_url=os.environ.get("ZILLOW_ZHVI_URL", ZHVI_DEFAULT_URL),
-        zori_url=os.environ.get("ZILLOW_ZORI_URL", ZORI_DEFAULT_URL),
+        zhvi_url=os.environ.get("ZILLOW_ZHVI_URL"),
+        zori_url=os.environ.get("ZILLOW_ZORI_URL"),
         fred_api_key=os.environ.get("FRED_API_KEY"),
         census_api_key=os.environ.get("CENSUS_API_KEY"))
     conn = DuckDBConn(Path(os.environ.get("DB_PATH", "data/arrived.duckdb")))
