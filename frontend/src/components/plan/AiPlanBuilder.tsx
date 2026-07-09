@@ -105,7 +105,7 @@ export default function AiPlanBuilder(): ReactElement {
           </button>
           {savedAs !== null && (
             <span className="rounded-sm bg-success/10 px-sm py-sm text-label text-success">
-              Saved "{savedAs}" — see Saved plans
+              Saved “{savedAs}” — see Saved plans
             </span>
           )}
         </div>
