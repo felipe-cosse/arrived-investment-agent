@@ -72,19 +72,26 @@ const GATES_SCHEMA = {
   },
 }
 
-const phaseKey = args && args.phase
+let input = args
+if (typeof input === 'string') {
+  try { input = JSON.parse(input) } catch (e) {
+    throw new Error('args must be JSON like {"phase": 1}; got unparseable string: ' + input)
+  }
+}
+input = input || {}
+const phaseKey = input.phase
 if (phaseKey === undefined || (phaseKey !== 'fix' && !PHASES[phaseKey])) {
   throw new Error('args.phase must be 1-9 or "fix" (got: ' + JSON.stringify(phaseKey) + ')')
 }
 
 const auditContext = phaseKey === 'fix'
-  ? 'Focus on: ' + ((args && args.scope) || 'files reported changed by git status / git diff.')
+  ? 'Focus on: ' + (input.scope || 'files reported changed by git status / git diff.')
   : 'The repo just completed spec §15 build step ' + phaseKey + '.'
 
 phase('Build')
 let buildReport
 if (phaseKey === 'fix') {
-  buildReport = 'fix-only round; scope: ' + ((args && args.scope) || 'whole repo')
+  buildReport = 'fix-only round; scope: ' + (input.scope || 'whole repo')
   log('Fix-only run — skipping the Build stage')
 } else {
   const p = PHASES[phaseKey]
