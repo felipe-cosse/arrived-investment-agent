@@ -2,10 +2,9 @@
 
 Each source is isolated (R20): a missing API key reports `skipped_no_key`, any
 other failure reports `error`, and neither stops the remaining sources or the
-app. The provider adapters (zillow/fred/census) and the `python -m` CLI arrive
-with build-order step 5 (§15); this module owns the shared runner used by both
-the CLI and the admin route.
-"""
+app. `build_sources` is the one definition of "enabled sources", shared by the
+app's composition root (`app/dependencies.py`, R3) and by the `python -m`
+entrypoint below, which is for use only while the API is stopped (R6)."""
 
 from __future__ import annotations
 
@@ -52,3 +51,52 @@ def refresh_all(
             logger.info("enrichment_upserted source=%s rows=%d", source.name, count)
             results[source.name] = {"status": "upserted", "rows": count}
     return results
+
+
+def build_sources(
+    *,
+    zhvi_url: str,
+    zori_url: str,
+    fred_api_key: str | None,
+    census_api_key: str | None,
+) -> list[MarketDataSource]:
+    """All four providers (§10); keyless ones stay listed so they report skipped_no_key (§9)."""
+    # Imported here, not at module level: the adapters import MissingApiKeyError
+    # from this module, so a top-level import would be circular.
+    from infrastructure.enrichment.census import CensusSource
+    from infrastructure.enrichment.fred import FredSource
+    from infrastructure.enrichment.zillow import ZillowSource
+
+    return [
+        ZillowSource("zillow_zhvi", zhvi_url, "home_value_index"),
+        ZillowSource("zillow_zori", zori_url, "rent_index"),
+        FredSource(fred_api_key),
+        CensusSource(census_api_key),
+    ]
+
+
+def main() -> None:
+    """CLI refresh for use only while the API is stopped — DuckDB has one writer (R6)."""
+    # CLI-only composition: the running app wires these in app/dependencies.py (R3).
+    from app.config import Settings
+    from infrastructure.duckdb.connection import DuckDBConn
+    from infrastructure.duckdb.offerings_repo import OfferingsRepo
+
+    logging.basicConfig(level=logging.INFO)
+    settings = Settings()
+    sources = build_sources(
+        zhvi_url=settings.zillow_zhvi_url, zori_url=settings.zillow_zori_url,
+        fred_api_key=settings.fred_api_key, census_api_key=settings.census_api_key)
+    conn = DuckDBConn(settings.db_path)
+    try:
+        repo = OfferingsRepo(conn)
+        results = refresh_all(sources, reader=repo, writer=repo)
+    finally:
+        conn.close()
+    for name, result in results.items():
+        logger.info("refresh_result source=%s status=%s rows=%d",
+                    name, result["status"], result["rows"])
+
+
+if __name__ == "__main__":
+    main()

@@ -21,7 +21,7 @@ from infrastructure.anthropic_client import create_llm_client
 from infrastructure.duckdb.connection import DuckDBConn
 from infrastructure.duckdb.offerings_repo import OfferingsRepo
 from infrastructure.duckdb.plans_repo import PlansRepo
-from infrastructure.enrichment.refresh import refresh_all
+from infrastructure.enrichment.refresh import build_sources, refresh_all
 from services.agent_service import AgentService
 from services.market_service import MarketService
 from services.plan_service import PlanService
@@ -65,9 +65,12 @@ def build_state(settings: Settings) -> AppState:
         )
     else:
         logger.info("agent_disabled reason=no_anthropic_api_key")
-    # Live enrichment sources are wired here in build-order step 5 (§15).
+    sources = build_sources(
+        zhvi_url=settings.zillow_zhvi_url, zori_url=settings.zillow_zori_url,
+        fred_api_key=settings.fred_api_key, census_api_key=settings.census_api_key)
     return AppState(settings=settings, conn=conn, offerings=offerings, plans=plans,
-                    plan_service=plan_service, dispatcher=dispatcher, agent=agent, sources=[])
+                    plan_service=plan_service, dispatcher=dispatcher, agent=agent,
+                    sources=sources)
 
 
 def get_state(request: Request) -> AppState:
