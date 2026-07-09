@@ -52,3 +52,9 @@ infrastructure (DuckDB repos, Anthropic adapter, enrichment fetchers, seeder) im
 - Money: integer-USD positions, $10 increments, $100 minimum; engine invariant `total_invested + unallocated == requested`.
 - Every plan output and agent plan reply carries the "hypothetical projection, not investment advice" disclaimer.
 - Secrets only via env; `.env.example` committed and complete.
+
+## Project tooling (.claude/)
+
+- **Build a spec phase:** run the `build-phase` workflow with `{phase: 1..9}` (spec §15 steps) — the right builder agent implements, spec-compliance reviewers audit rule families in parallel, the verifier runs the gates, and a fix loop runs until green (max 3 rounds). `{phase: "fix", scope: "..."}` runs an audit+fix round without building.
+- **Agents:** `backend-builder` / `frontend-builder` implement phases and fixes; `spec-compliance-reviewer` audits against R1–R31 (read-only); `verifier` runs the gates and reports evidence.
+- **Skills:** invoke `spec-audit` before completing any change that touched source (mechanical script + judgment checklist); invoke `verify-gate` before claiming anything complete — a gate that cannot run is a failure, not a skip.
