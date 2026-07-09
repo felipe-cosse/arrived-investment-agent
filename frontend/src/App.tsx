@@ -12,6 +12,7 @@ import ResultPanel from "./components/data/ResultPanel";
 import StalenessBadge from "./components/layout/StalenessBadge";
 import TwoPane from "./components/layout/TwoPane";
 import PlanBuilder from "./components/plan/PlanBuilder";
+import AiPlanBuilder from "./components/plan/AiPlanBuilder";
 import SavedPlans from "./components/plan/SavedPlans";
 import { useChatStore } from "./state/chatStore";
 
@@ -55,7 +56,17 @@ function DataPanel(): ReactElement {
       </nav>
       {tab === "agent" && panelContent !== null && <ResultPanel event={panelContent} />}
       {tab === "explore" && <OfferingExplorer />}
-      {tab === "plan" && <PlanBuilder />}
+      {tab === "plan" && (
+        <div className="flex flex-col gap-lg">
+          <PlanBuilder />
+          <div role="separator" className="flex items-center gap-md text-label text-secondary">
+            <span className="h-px flex-1 bg-secondary/20" />
+            or describe your goal
+            <span className="h-px flex-1 bg-secondary/20" />
+          </div>
+          <AiPlanBuilder />
+        </div>
+      )}
       {tab === "saved" && <SavedPlans />}
     </div>
   );
