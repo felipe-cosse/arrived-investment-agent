@@ -13,6 +13,16 @@ COPY src ./src
 # `npm run build` = `tsc --noEmit && vite build` (package.json); CI runs vitest.
 RUN npm run build
 
+# --- Dev stage: Vite dev server with HMR (docker-compose.override.yml only) -----
+# Deps only; source arrives via bind mount at runtime. Kept before the nginx
+# stage so the default (no --target) build stays the production image.
+FROM node:22-alpine AS dev
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+EXPOSE 80
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "80"]
+
 # --- Stage 2: nginx runtime -----------------------------------------------------
 FROM nginx:1-alpine
 

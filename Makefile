@@ -2,7 +2,7 @@
 # Commands mirror the project's verification gates; see CLAUDE.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev-api dev-web test test-backend test-frontend lint typecheck audit build verify up down logs refresh refresh-offerings clean
+.PHONY: help install dev-api dev-web test test-backend test-frontend lint typecheck audit build verify up up-prod down logs refresh refresh-offerings clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -44,8 +44,11 @@ build: ## Production frontend build (includes tsc)
 
 verify: lint typecheck test build audit ## Full verification gate
 
-up: ## Build and start the full stack (web :5173, api :8000)
+up: ## Start the hot-reload dev stack (bind-mounted source; edits reflect live)
 	docker compose up --build -d
+
+up-prod: ## Start the production-parity stack (baked build, nginx, no mounts)
+	docker compose -f docker-compose.yml up --build -d
 
 down: ## Stop the stack
 	docker compose down

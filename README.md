@@ -35,6 +35,12 @@ Architecture is ports-and-adapters: a pure domain core (models, risk strategies,
 docker compose up --build
 ```
 
+This runs a **hot-reload** stack by default (via `docker-compose.override.yml`): source is bind-mounted, so editing a backend `.py` reloads uvicorn and editing a frontend `.tsx` hot-swaps in the browser — no rebuild. For the production-parity stack (baked build, nginx, no mounts) bypass the override:
+
+```bash
+docker compose -f docker-compose.yml up --build   # or: make up-prod
+```
+
 Then open the app and click **Refresh live data** on the Explore tab to load the current Arrived catalogue. Everything except the chat works without any API key.
 
 To enable the chat agent, put your key in `backend/.env` (see `backend/.env.example`):

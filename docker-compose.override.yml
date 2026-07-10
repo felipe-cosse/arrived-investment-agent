@@ -1,0 +1,33 @@
+# Development override — auto-merged by `docker compose up`, so the default
+# stack is live hot-reload for BOTH services: source is bind-mounted, the api
+# runs `uvicorn --reload` and the web runs the Vite dev server with HMR. Edit a
+# file on the host and the running container reflects it — no rebuild.
+#
+# Polling is forced (WATCHFILES_FORCE_POLLING / usePolling): macOS bind mounts
+# do not deliver inotify events into a Linux container, so native watching is
+# silent. Reload is scoped to /app/src so DuckDB writes under /app/data never
+# trigger a restart (single-writer rule, R6/R7).
+#
+# For the production-parity stack (baked build, nginx, no mounts) bypass this
+# file explicitly:
+#   docker compose -f docker-compose.yml up --build
+
+services:
+  api:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000",
+              "--reload", "--reload-dir", "/app/src"]
+    environment:
+      - WATCHFILES_FORCE_POLLING=true
+    volumes:
+      - ./backend/src:/app/src
+
+  web:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      - DOCKER_POLLING=true
+      - VITE_API_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
