@@ -54,11 +54,14 @@ class ArrivedCatalogue:
                     return items
                 page += 1
 
-    def fetch_share_prices(self, short_name: str) -> list[dict[str, Any]]:
-        """One offering's share-price history (a bare list, or a `data` wrapper's list)."""
+    def fetch_share_prices(self, offering_id: int) -> list[dict[str, Any]]:
+        """One offering's share-price history, unwrapped from the `data` envelope.
+
+        The endpoint requires the numeric offering id — shortName gets a 400.
+        """
         with self._client() as client:
-            body = self._get(client, f"/offerings/{short_name}/share-prices")
-        return list(body.get("data") or []) if isinstance(body, dict) else list(body)
+            body = self._get(client, f"/offerings/{offering_id}/share-prices")
+        return list(body.get("data") or [])
 
     def _client(self) -> httpx.Client:
         """A configured client; short-lived because refreshes are manual and rare."""

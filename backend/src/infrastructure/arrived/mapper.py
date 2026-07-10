@@ -152,8 +152,9 @@ def map_offerings(raw: list[RawItem], share_prices: dict[str, list[RawItem]],
                   as_of: datetime) -> MappedData:
     """Map buyable catalogue entries plus share-price histories to domain rows.
 
-    ``share_prices`` is keyed by shortName (the share-prices endpoint's key);
-    offerings without a usable history take the median appreciation chain.
+    ``share_prices`` is keyed by shortName (the refresh runner re-keys the
+    id-addressed endpoint's results); offerings without a usable history take
+    the median appreciation chain.
     """
     buyable = [item for item in raw if item.get("status") in BUYABLE_STATUSES]
     prepared: list[tuple[RawItem, PropertyType, float | None, float | None, _History]] = []

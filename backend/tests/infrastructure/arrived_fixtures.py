@@ -1,7 +1,7 @@
 """Offline fixtures modeled on Arrived's public catalogue API (live-data design doc).
 
-Field names are verbatim from the 2026-07-09 reconnaissance: shortName, name,
-status, type, assetType, sharePrice, minTransactionAmount, fundedPercent,
+Field names are verbatim from the 2026-07-09 reconnaissance: id, shortName,
+name, status, type, assetType, sharePrice, minTransactionAmount, fundedPercent,
 targetRaiseAmount, totalPurchasePrice, latestDividend{dividendPerShare, endDate},
 properties[0]{purchasePrice, address{city, province}}. Tests never touch the
 network (R25); these dicts stand in for the catalogue and share-price endpoints.
@@ -13,6 +13,7 @@ from typing import Any
 
 # Buyable long-term rental with a dividend: yield 0.05*12/10 = 0.06, leverage 0.5.
 LTR_WITH_DIVIDEND: dict[str, Any] = {
+    "id": 426,
     "shortName": "maple",
     "name": "The Maple",
     "status": "TRANSACT_ALL",
@@ -31,6 +32,7 @@ LTR_WITH_DIVIDEND: dict[str, Any] = {
 # Buyable long-term rental before its first dividend: yield falls back to the
 # same-type median; property value falls back to totalPurchasePrice.
 LTR_NO_DIVIDEND: dict[str, Any] = {
+    "id": 427,
     "shortName": "birch",
     "name": "The Birch",
     "status": "TRANSACT_EARLY_ACCESS",
@@ -48,6 +50,7 @@ LTR_NO_DIVIDEND: dict[str, Any] = {
 
 # Buyable short-term (vacation) rental with a dividend: yield 0.10*12/15 = 0.08.
 STR_WITH_DIVIDEND: dict[str, Any] = {
+    "id": 428,
     "shortName": "dune",
     "name": "The Dune",
     "status": "TRANSACT_ALL",
@@ -66,6 +69,7 @@ STR_WITH_DIVIDEND: dict[str, Any] = {
 # Buyable fund: no properties -> Diversified; yield 0.075*12/10 = 0.09;
 # property value falls all the way back to targetRaiseAmount.
 FUND_OFFERING: dict[str, Any] = {
+    "id": 429,
     "shortName": "haven-fund",
     "name": "The Haven Fund",
     "status": "TRANSACT_ALL",
@@ -82,6 +86,7 @@ FUND_OFFERING: dict[str, Any] = {
 
 # Fully funded listing: must be filtered out (its 0.048 yield would skew medians).
 FUNDED_OFFERING: dict[str, Any] = {
+    "id": 430,
     "shortName": "sold-out",
     "name": "The Sold Out",
     "status": "FUNDED",
@@ -99,6 +104,7 @@ FUNDED_OFFERING: dict[str, Any] = {
 
 # Not yet open for investment: must be filtered out.
 COMING_SOON_OFFERING: dict[str, Any] = {
+    "id": 431,
     "shortName": "teaser",
     "name": "The Teaser",
     "status": "COMING_SOON",
@@ -141,7 +147,8 @@ SINGLE_POINT_HISTORY: list[dict[str, Any]] = [
     {"date": "2026-06-01", "sharePrice": 15.0},
 ]
 
-# Keyed by shortName, as the share-prices endpoint is; the fund has no history.
+# Keyed by shortName — the mapper's histories contract (the endpoint itself is
+# addressed by numeric id); the fund has no history.
 SHARE_PRICES: dict[str, list[dict[str, Any]]] = {
     "maple": RISING_HISTORY,
     "birch": FLAT_HISTORY,

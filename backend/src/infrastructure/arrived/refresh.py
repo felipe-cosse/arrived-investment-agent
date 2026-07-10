@@ -33,6 +33,8 @@ def _share_prices(catalogue: ArrivedCatalogue,
                   ) -> tuple[dict[str, list[dict[str, Any]]], int]:
     """Histories keyed by shortName, plus the failed-fetch count (R28 visibility).
 
+    The endpoint takes the catalogue's numeric ``id`` (shortName gets a 400),
+    but the histories dict stays keyed by shortName — the mapper's contract.
     A failed fetch logs, counts, and leaves the key absent, so that offering
     takes the mapper's median-appreciation fallback.
     """
@@ -41,7 +43,7 @@ def _share_prices(catalogue: ArrivedCatalogue,
     for item in buyable:
         short_name = str(item["shortName"])
         try:
-            histories[short_name] = catalogue.fetch_share_prices(short_name)
+            histories[short_name] = catalogue.fetch_share_prices(int(item["id"]))
         except Exception:
             failures += 1
             logger.exception("share_prices_failed short_name=%s", short_name)

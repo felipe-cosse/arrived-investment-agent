@@ -20,6 +20,7 @@ from tests.infrastructure.arrived_fixtures import (
     CATALOGUE,
     COMING_SOON_OFFERING,
     FUNDED_OFFERING,
+    LTR_WITH_DIVIDEND,
     SHARE_PRICES,
 )
 
@@ -27,6 +28,8 @@ BASE = "https://arrived.test"
 LIVE_IDS = {"arrived-maple", "arrived-birch", "arrived-dune", "arrived-haven-fund"}
 SUCCESS_REPORT = {"status": "upserted", "offerings": 4, "returns": 8,
                   "aliases": 3, "seeds_retired": 11, "share_price_failures": 0}
+# The share-prices endpoint is addressed by numeric offering id, not shortName.
+_SHORT_BY_ID = {str(item["id"]): str(item["shortName"]) for item in CATALOGUE}
 
 
 def _api_handler(request: httpx.Request) -> httpx.Response:
@@ -35,7 +38,10 @@ def _api_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={
             "pagination": {"totalResults": len(CATALOGUE)}, "data": CATALOGUE})
     if path.startswith("/offerings/") and path.endswith("/share-prices"):
-        return httpx.Response(200, json=SHARE_PRICES.get(path.split("/")[2], []))
+        short_name = _SHORT_BY_ID.get(path.split("/")[2])
+        if short_name is None:
+            return httpx.Response(400)  # the real API rejects non-numeric ids
+        return httpx.Response(200, json={"data": SHARE_PRICES.get(short_name, [])})
     return httpx.Response(404)
 
 
@@ -60,7 +66,7 @@ def test_refresh_is_idempotent_on_a_second_run(repo: OfferingsRepo) -> None:
 
 def test_share_price_failure_falls_back_and_run_continues(repo: OfferingsRepo) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/offerings/maple/share-prices":
+        if request.url.path == f"/offerings/{LTR_WITH_DIVIDEND['id']}/share-prices":
             return httpx.Response(500)
         return _api_handler(request)
 
