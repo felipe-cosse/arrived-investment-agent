@@ -76,11 +76,17 @@ def _stream_frame(event: Any) -> str | None:
     return None
 
 
-def _block_dict(block: Any) -> dict[str, Any]:
-    """Serialize an assistant content block for the follow-up messages payload."""
+def _block_dict(block: Any) -> dict[str, Any] | None:
+    """Serialize an assistant content block for the follow-up messages payload.
+
+    Empty text blocks (the API can emit one beside a tool_use) are dropped:
+    echoing them back is rejected with 400 "text content blocks must be
+    non-empty". A tool_use turn always keeps at least its tool_use block.
+    """
     if getattr(block, "type", None) == "tool_use":
         return {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
-    return {"type": "text", "text": getattr(block, "text", "")}
+    text = getattr(block, "text", "")
+    return {"type": "text", "text": text} if text.strip() else None
 
 
 class AgentService:
@@ -117,7 +123,8 @@ class AgentService:
                     yield sse("done", {"stop_reason": _normalize_stop_reason(final.stop_reason)})
                     return
                 convo.append({"role": "assistant",
-                              "content": [_block_dict(b) for b in final.content]})
+                              "content": [d for b in final.content
+                                          if (d := _block_dict(b)) is not None]})
                 results: list[dict[str, Any]] = []
                 for block in final.content:
                     if getattr(block, "type", None) != "tool_use":
