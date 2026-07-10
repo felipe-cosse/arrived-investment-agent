@@ -42,7 +42,7 @@ function Detail({ details, onBack }: {
         <ReturnsChart returns={details.history} title="Last 12 months" />
       </div>
       <p className="text-label text-secondary">
-        Offering data as of {shortDate(details.offering.as_of)} (demo-seeded or Arrived catalogue data).
+        Offering data as of {shortDate(details.offering.as_of)} (Arrived catalogue data).
       </p>
     </div>
   );
@@ -94,13 +94,15 @@ export default function OfferingExplorer(): ReactElement {
           setRefreshStatus({ kind: "error", text: report.detail });
           return;
         }
+        const purged =
+          report.seeds_purged > 0 ? ` · ${report.seeds_purged} demo rows removed` : "";
         const degraded =
           report.share_price_failures > 0
             ? ` · ${report.share_price_failures} price histories unavailable`
             : "";
         setRefreshStatus({
           kind: "success",
-          text: `${report.offerings} live offerings loaded · ${report.seeds_retired} demo offerings retired${degraded}`,
+          text: `${report.offerings} live offerings loaded${purged}${degraded}`,
         });
         setReloadKey((key) => key + 1);
       })
@@ -120,6 +122,7 @@ export default function OfferingExplorer(): ReactElement {
   if (details !== null) {
     return <Detail details={details} onBack={() => setDetails(null)} />;
   }
+  const hasFilters = Object.values(filters).some((value) => value !== undefined);
   return (
     <div className="flex flex-col gap-lg">
       <div className="flex flex-wrap items-end justify-between gap-md">
@@ -149,7 +152,11 @@ export default function OfferingExplorer(): ReactElement {
       {isLoading ? (
         <p className="text-body text-secondary">Loading offerings…</p>
       ) : offerings.length === 0 ? (
-        <p className="text-body text-secondary">No offerings match these filters.</p>
+        <p className="text-body text-secondary">
+          {hasFilters
+            ? "No offerings match these filters."
+            : "No offerings loaded yet — refresh to load Arrived's live catalogue."}
+        </p>
       ) : (
         <div className="grid gap-md sm:grid-cols-2 xl:grid-cols-3">
           {offerings.map((offering) => (

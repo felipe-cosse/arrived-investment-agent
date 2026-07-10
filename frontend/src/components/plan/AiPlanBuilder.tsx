@@ -84,7 +84,7 @@ export default function AiPlanBuilder(): ReactElement {
       </form>
       {state.error !== null && (
         <p role="alert" className="rounded-md bg-primary px-md py-sm text-label text-surface">
-          {state.error} — the deterministic form above works offline.
+          {state.error} — the deterministic form above works on already-loaded data.
         </p>
       )}
       <div aria-live="polite">

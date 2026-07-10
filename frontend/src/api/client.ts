@@ -150,7 +150,7 @@ export interface OfferingsUpsertedReport {
   offerings: number;
   returns: number;
   aliases: number;
-  seeds_retired: number;
+  seeds_purged: number;
   share_price_failures: number;
 }
 
