@@ -65,8 +65,16 @@ def test_identity_and_passthrough_fields() -> None:
     assert maple.status == "available"
     assert maple.share_price_usd == 10.0
     assert maple.min_investment_usd == 100.0
-    assert maple.funded_pct == 42.5
+    assert maple.funded_pct == pytest.approx(0.425)  # fundedPercent 42.5 -> decimal
     assert maple.as_of == AS_OF
+
+
+def test_funded_pct_scales_to_decimal_clamps_and_preserves_none() -> None:
+    over = _variant(LTR_WITH_DIVIDEND, shortName="over", fundedPercent=250.0)
+    negative = _variant(LTR_WITH_DIVIDEND, shortName="neg", fundedPercent=-5.0)
+    missing = _variant(LTR_WITH_DIVIDEND, shortName="none", fundedPercent=None)
+    data = map_offerings([over, negative, missing], {}, AS_OF)
+    assert [o.funded_pct for o in data.offerings] == [1.0, 0.0, None]
 
 
 def test_market_strips_us_prefix_and_funds_are_diversified() -> None:

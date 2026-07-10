@@ -81,6 +81,14 @@ def _leverage(item: RawItem) -> float:
     return min(1.0, max(0.0, 1.0 - raise_amount / purchase))
 
 
+def _funded_pct(item: RawItem) -> float | None:
+    """fundedPercent (API's 0-100 scale) as the schema's [0, 1] decimal; None preserved."""
+    value = _number(item.get("fundedPercent"))
+    if value is None:
+        return None
+    return min(1.0, max(0.0, value / 100.0))
+
+
 def _direct_yield(item: RawItem) -> float | None:
     """Annualized dividendPerShare*12/sharePrice, or None before the first dividend."""
     dividend = _number((item.get("latestDividend") or {}).get("dividendPerShare"))
@@ -172,7 +180,7 @@ def map_offerings(raw: list[RawItem], share_prices: dict[str, list[RawItem]],
             min_investment_usd=float(item["minTransactionAmount"]),
             projected_dividend_yield=_with_fallback(direct_yield, ptype, yields_by_type),
             projected_appreciation=_with_fallback(direct_appr, ptype, apprs_by_type),
-            funded_pct=_number(item.get("fundedPercent")),
+            funded_pct=_funded_pct(item),
             property_value_usd=_property_value(item),
             leverage_pct=_leverage(item), as_of=as_of))
         returns.extend(_return_rows(offering_id, history, item.get("latestDividend")))
