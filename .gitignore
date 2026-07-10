@@ -11,6 +11,7 @@ dist/
 .claude/
 .superpowers/
 docs/
+tasks/
 CLAUDE.md
 DESIGN.md
 SPEC.md
