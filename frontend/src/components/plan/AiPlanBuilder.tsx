@@ -9,6 +9,7 @@ import type { ReactElement } from "react";
 import { errorMessage, savePlan } from "../../api/client";
 import { streamChat } from "../../api/sse";
 import { usePlansStore } from "../../state/plansStore";
+import Markdown from "../Markdown";
 import {
   INITIAL_AI_PLAN_STATE,
   buildGoalMessage,
@@ -89,9 +90,9 @@ export default function AiPlanBuilder(): ReactElement {
       )}
       <div aria-live="polite">
         {state.narrative !== "" && (
-          <p className="whitespace-pre-wrap rounded-lg bg-surface p-lg text-body text-primary shadow-sm">
-            {state.narrative}
-          </p>
+          <div className="rounded-lg bg-surface p-lg text-body text-primary shadow-sm">
+            <Markdown text={state.narrative} />
+          </div>
         )}
       </div>
       {state.plan !== null && state.plan.feasible && state.planInput !== null && (

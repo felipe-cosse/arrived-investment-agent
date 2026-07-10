@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import type { ReactElement } from "react";
 import { useChatStore } from "../../state/chatStore";
 import type { ChatMessage } from "../../state/chatStore";
+import Markdown from "../Markdown";
 
 const SUGGESTIONS = [
   "Compare Nashville vs Tucson, then invest $2,000 balanced",
@@ -31,8 +32,8 @@ function Bubble({ turn }: { turn: ChatMessage }): ReactElement {
     );
   }
   return (
-    <div className="mr-xl self-start whitespace-pre-wrap rounded-md bg-background px-md py-sm text-body text-primary">
-      {turn.content}
+    <div className="mr-xl self-start rounded-md bg-background px-md py-sm text-body text-primary">
+      <Markdown text={turn.content} />
     </div>
   );
 }
@@ -78,8 +79,8 @@ export default function MessageList(): ReactElement {
       ))}
       <div aria-live="polite" className="flex flex-col">
         {streamingText !== "" && (
-          <div className="mr-xl self-start whitespace-pre-wrap rounded-md bg-background px-md py-sm text-body text-primary">
-            {streamingText}
+          <div className="mr-xl self-start rounded-md bg-background px-md py-sm text-body text-primary">
+            <Markdown text={streamingText} />
           </div>
         )}
         {isStreaming && streamingText === "" && (
