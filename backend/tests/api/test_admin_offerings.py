@@ -27,7 +27,7 @@ def client(tmp_path: Path):
 
 def test_refresh_offerings_returns_runner_report(client) -> None:
     report = {"status": "upserted", "offerings": 4, "returns": 8,
-              "aliases": 3, "seeds_retired": 11}
+              "aliases": 3, "seeds_retired": 11, "share_price_failures": 0}
     client.app.dependency_overrides[get_offerings_refresh_runner] = lambda: (lambda: report)
     resp = client.post("/api/admin/refresh-offerings")
     assert resp.status_code == 200

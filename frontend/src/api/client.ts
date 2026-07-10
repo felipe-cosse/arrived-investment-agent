@@ -151,6 +151,7 @@ export interface OfferingsUpsertedReport {
   returns: number;
   aliases: number;
   seeds_retired: number;
+  share_price_failures: number;
 }
 
 /** POST /api/admin/refresh-offerings failure report (HTTP 200; `status` carries it). */

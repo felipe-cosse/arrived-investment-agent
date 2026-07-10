@@ -1,7 +1,7 @@
 """Tests for seed-retirement support: SEED_OFFERING_IDS and close_offerings.
 
 The live refresh runner (live-data design doc) retires the 11 seed offerings by
-flipping their status to 'closed' after the first successful scrape — the
+flipping their status to 'closed' after the first successful catalogue refresh — the
 spec's sanctioned R8 exception besides insert/delete-only plans.
 """
 

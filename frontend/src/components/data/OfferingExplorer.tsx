@@ -1,6 +1,6 @@
 /** Data-explorer view: filterable offering grid backed by GET /api/offerings,
  * with a drill-in detail view (card + 12-month returns) per offering and a
- * manual "Refresh live data" trigger for the Arrived catalogue scrape.
+ * manual "Refresh live data" trigger for the Arrived public-catalogue JSON refresh.
  */
 
 import { useEffect, useState } from "react";
@@ -94,9 +94,13 @@ export default function OfferingExplorer(): ReactElement {
           setRefreshStatus({ kind: "error", text: report.detail });
           return;
         }
+        const degraded =
+          report.share_price_failures > 0
+            ? ` · ${report.share_price_failures} price histories unavailable`
+            : "";
         setRefreshStatus({
           kind: "success",
-          text: `${report.offerings} live offerings loaded · ${report.seeds_retired} demo offerings retired`,
+          text: `${report.offerings} live offerings loaded · ${report.seeds_retired} demo offerings retired${degraded}`,
         });
         setReloadKey((key) => key + 1);
       })

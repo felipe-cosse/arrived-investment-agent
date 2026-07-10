@@ -26,7 +26,7 @@ from tests.infrastructure.arrived_fixtures import (
 BASE = "https://arrived.test"
 LIVE_IDS = {"arrived-maple", "arrived-birch", "arrived-dune", "arrived-haven-fund"}
 SUCCESS_REPORT = {"status": "upserted", "offerings": 4, "returns": 8,
-                  "aliases": 3, "seeds_retired": 11}
+                  "aliases": 3, "seeds_retired": 11, "share_price_failures": 0}
 
 
 def _api_handler(request: httpx.Request) -> httpx.Response:
@@ -71,6 +71,8 @@ def test_share_price_failure_falls_back_and_run_continues(repo: OfferingsRepo) -
     # No offering has a usable history left -> the mapper's final 0.0 fallback.
     assert maple.projected_appreciation == 0.0
     assert report["seeds_retired"] == 11
+    # R28: the degraded run is visible in the report, not just the logs.
+    assert report["share_price_failures"] >= 1
 
 
 def test_catalogue_failure_reports_error_and_writes_nothing(repo: OfferingsRepo) -> None:

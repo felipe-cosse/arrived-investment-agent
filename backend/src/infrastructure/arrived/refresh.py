@@ -29,30 +29,38 @@ DEFAULT_API_URL = "https://abacus.arrivedhomes.com"
 
 
 def _share_prices(catalogue: ArrivedCatalogue,
-                  buyable: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    """Histories keyed by shortName; a failed fetch logs and leaves the key absent,
-    so that offering takes the mapper's median-appreciation fallback."""
+                  buyable: list[dict[str, Any]],
+                  ) -> tuple[dict[str, list[dict[str, Any]]], int]:
+    """Histories keyed by shortName, plus the failed-fetch count (R28 visibility).
+
+    A failed fetch logs, counts, and leaves the key absent, so that offering
+    takes the mapper's median-appreciation fallback.
+    """
     histories: dict[str, list[dict[str, Any]]] = {}
+    failures = 0
     for item in buyable:
         short_name = str(item["shortName"])
         try:
             histories[short_name] = catalogue.fetch_share_prices(short_name)
         except Exception:
+            failures += 1
             logger.exception("share_prices_failed short_name=%s", short_name)
-    return histories
+    return histories, failures
 
 
 def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> dict[str, Any]:
     """Fetch, map, then upsert the buyable catalogue; retire seeds on success.
 
     Report: `{"status": "upserted", "offerings", "returns", "aliases",
-    "seeds_retired"}` on success; `{"status": "error", "detail"}` on any
+    "seeds_retired", "share_price_failures"}` on success (the failure count
+    keeps degraded runs visible, R28); `{"status": "error", "detail"}` on any
     failure, with nothing written (design doc's error contract).
     """
     try:
         raw = catalogue.fetch_catalogue()
         buyable = [item for item in raw if item.get("status") in BUYABLE_STATUSES]
-        mapped = map_offerings(raw, _share_prices(catalogue, buyable), datetime.now(UTC))
+        histories, price_failures = _share_prices(catalogue, buyable)
+        mapped = map_offerings(raw, histories, datetime.now(UTC))
         if not mapped.offerings:
             logger.warning("offerings_refresh_empty raw_items=%d", len(raw))
             return {"status": "error", "detail": "no buyable offerings found"}
@@ -64,12 +72,14 @@ def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> di
         }
         report["seeds_retired"] = (repo.close_offerings(SEED_OFFERING_IDS)
                                    if report["offerings"] else 0)
+        report["share_price_failures"] = price_failures
     except Exception as exc:
         logger.exception("offerings_refresh_failed")
         return {"status": "error", "detail": str(exc)}
-    logger.info("offerings_refreshed offerings=%d returns=%d aliases=%d seeds_retired=%d",
+    logger.info("offerings_refreshed offerings=%d returns=%d aliases=%d seeds_retired=%d "
+                "share_price_failures=%d",
                 report["offerings"], report["returns"], report["aliases"],
-                report["seeds_retired"])
+                report["seeds_retired"], report["share_price_failures"])
     return report
 
 
