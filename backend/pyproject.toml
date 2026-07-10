@@ -28,7 +28,8 @@ package = false
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-pythonpath = ["src"]
+# "." lets test modules import shared fixture modules as `tests.<pkg>.<module>`.
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -40,7 +41,7 @@ src = ["src", "tests"]
 select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "domain", "services", "infrastructure"]
+known-first-party = ["app", "domain", "services", "infrastructure", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 # Appendix A test files are canonical and copied verbatim (spec §12).

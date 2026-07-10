@@ -38,6 +38,9 @@ _OFFERINGS: tuple[tuple[str, str, str, PropertyType, float, float, float], ...] 
     ("fund-credit", "Private Credit Fund", FUND_MARKET, "fund", 0.081, 0.000, 0.00),
 )
 
+# The seed catalogue ids, exported so the live refresh can retire them (status='closed').
+SEED_OFFERING_IDS: tuple[str, ...] = tuple(entry[0] for entry in _OFFERINGS)
+
 
 def slugify_market(market: str) -> str:
     """Canonical metro slug for a raw market name: 'Nashville, TN' -> 'nashville-tn'."""

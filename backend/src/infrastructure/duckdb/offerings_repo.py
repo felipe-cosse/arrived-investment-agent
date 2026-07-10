@@ -150,6 +150,21 @@ class OfferingsRepo:
             _upsert_sql("market_aliases", ("raw_market", "metro"), ("raw_market",)),
             [tuple(r) for r in rows])
 
+    def close_offerings(self, ids: Sequence[str]) -> int:
+        """Set status='closed' for the given offering ids; returns rows matched.
+
+        This is the spec's sanctioned R8 exception (besides insert/delete-only
+        plans): retiring the seed offerings after the first successful live
+        catalogue refresh is a status UPDATE, not a keyed upsert.
+        """
+        if not ids:
+            return 0
+        placeholders = ", ".join("?" for _ in ids)
+        row = self._conn.cursor().execute(
+            f"UPDATE offerings SET status = 'closed' WHERE id IN ({placeholders})",
+            list(ids)).fetchone()
+        return 0 if row is None else int(row[0])
+
     def _write(self, sql: str, params: list[tuple[Any, ...]]) -> int:
         """Run one upsert statement over all rows; empty input writes nothing."""
         if not params:
