@@ -1,5 +1,7 @@
+/** Pins the [ATTACHED PLAN] block: delimiters, verbatim inputs and score breakdowns, compact display numbers. */
+
 import { describe, expect, it } from "vitest";
-import type { PlanRecord } from "../../types/domain";
+import type { PlanRecord } from "../types/domain";
 import { formatPlanAttachment, toPlanAttachment } from "./attachment";
 
 const RECORD: PlanRecord = {
@@ -119,18 +121,18 @@ describe("formatPlanAttachment", () => {
     ]);
   });
 
-  it("rounds USD to whole dollars and rates/scores to 4 decimal places", () => {
+  it("keeps inputs and score breakdowns verbatim while compacting other display numbers", () => {
     const parsed = parseBlock(formatPlanAttachment(RECORD));
-    expect(parsed.inputs.amount).toBe(2000);
-    expect(parsed.inputs.existing_positions["sfr-oakview"]).toBe(301);
+    expect(parsed.inputs.amount).toBe(2000.4);
+    expect(parsed.inputs.existing_positions["sfr-oakview"]).toBe(300.6);
     const position = parsed.output.positions[0];
+    expect(position.score_breakdown.yield).toBe(0.91239);
+    expect(position.score_breakdown.total).toBe(0.712345);
     expect(position.amount_usd).toBe(1000);
     expect(position.est_annual_dividend_usd).toBe(46);
     expect(position.weight_pct).toBe(0.5);
     expect(position.projected_dividend_yield).toBe(0.0457);
     expect(position.projected_appreciation).toBe(0.0312);
-    expect(position.score_breakdown.yield).toBe(0.9124);
-    expect(position.score_breakdown.total).toBe(0.7123);
     expect(parsed.output.summary.requested_usd).toBe(2000);
     expect(parsed.output.summary.unallocated_cash_usd).toBe(0);
     expect(parsed.output.summary.blended_dividend_yield).toBe(0.0457);

@@ -1,7 +1,7 @@
 /** Composer attachment row: 📎 toggle opening a saved-plans picker, and the
  * pending-attachment chip with its remove ×. Picking loads the full snapshot
- * (immutable, cached — R16) and attaches it; a failed load surfaces through
- * the plansStore error line and attaches nothing.
+ * (immutable, cached — R16) and attaches it; a failed load renders an inline
+ * alert inside the picker (R28) and attaches nothing.
  */
 
 import { useState } from "react";
@@ -20,7 +20,7 @@ function PlanOption({ plan, onPick }: {
       <button
         type="button"
         onClick={() => onPick(plan.id)}
-        className="w-full rounded-sm px-sm py-sm text-left hover:bg-accent/10"
+        className="w-full rounded-md px-sm py-sm text-left hover:bg-accent/10"
       >
         <span className="block text-label font-medium text-primary">
           {plan.name ?? "Untitled plan"}
@@ -35,29 +35,43 @@ function PlanOption({ plan, onPick }: {
 
 export default function AttachmentPicker(): ReactElement {
   const [open, setOpen] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
   const pending = useChatStore((s) => s.pendingAttachment);
   const clearAttachment = useChatStore((s) => s.clearAttachment);
   const plans = usePlansStore((s) => s.plans);
   const isLoading = usePlansStore((s) => s.isLoading);
 
   const toggle = (): void => {
+    setPickError(null);
     setOpen(!open);
     if (!open && usePlansStore.getState().plans.length === 0) {
       void usePlansStore.getState().loadPlans();
     }
   };
 
+  // On failure the picker stays open so the alert is visible where the user
+  // just clicked (R28); it only closes once a snapshot is actually attached.
   const pick = async (id: string): Promise<void> => {
-    setOpen(false);
+    setPickError(null);
     await usePlansStore.getState().loadPlan(id);
     const record = usePlansStore.getState().records[id];
-    if (record !== undefined) useChatStore.getState().attachPlan(record);
+    if (record === undefined) {
+      setPickError(usePlansStore.getState().error ?? "Could not load that plan.");
+      return;
+    }
+    useChatStore.getState().attachPlan(record);
+    setOpen(false);
   };
 
   return (
     <div className="flex flex-col gap-sm">
       {open && (
-        <div className="rounded-md border border-secondary/20 bg-surface p-sm shadow-md">
+        <div className="flex flex-col gap-sm rounded-md border border-secondary/20 bg-surface p-sm shadow-md">
+          {pickError !== null && (
+            <p role="alert" className="rounded-md bg-primary px-md py-sm text-label text-surface">
+              {pickError}
+            </p>
+          )}
           {plans.length === 0 ? (
             <p className="px-sm py-sm text-label text-secondary">
               {isLoading ? "Loading saved plans…" : "No saved plans yet — build and save one first."}

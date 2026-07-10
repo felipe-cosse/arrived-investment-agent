@@ -7,8 +7,8 @@
 import { create } from "zustand";
 import { streamChat } from "../api/sse";
 import { errorMessage } from "../api/client";
-import { formatPlanAttachment, toPlanAttachment } from "../components/chat/attachment";
-import type { PlanAttachment } from "../components/chat/attachment";
+import { formatPlanAttachment, toPlanAttachment } from "../lib/attachment";
+import type { PlanAttachment } from "../lib/attachment";
 import { usePlansStore } from "./plansStore";
 import type { PlanRecord } from "../types/domain";
 import type { ChatTurn, ResultEvent, SseEvent } from "../types/events";

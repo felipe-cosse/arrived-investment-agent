@@ -4,7 +4,7 @@
  * No API changes — client-side context injection only (design 2026-07-09).
  */
 
-import type { Plan, PlanRecord, PlanSummary, Position, ScoreBreakdown } from "../../types/domain";
+import type { Plan, PlanRecord, PlanSummary, Position } from "../types/domain";
 
 /** Chip metadata for an attached plan, stored on the chat message. */
 export interface PlanAttachment {
@@ -17,26 +17,19 @@ export function toPlanAttachment(record: PlanRecord): PlanAttachment {
   return { id: record.id, name: record.name ?? record.id };
 }
 
-/** Rates and scores keep 4 decimal places in the compact JSON. */
+/** Display rates keep 4 decimal places in the compact JSON. */
 function rate(value: number): number {
   return Math.round(value * 10_000) / 10_000;
 }
 
-/** USD amounts are whole dollars in the compact JSON. */
+/** Display USD amounts are whole dollars in the compact JSON. */
 function usd(value: number): number {
   return Math.round(value);
 }
 
-function compactBreakdown(b: ScoreBreakdown): ScoreBreakdown {
-  return {
-    yield: rate(b.yield),
-    appreciation: rate(b.appreciation),
-    momentum: rate(b.momentum),
-    leverage: rate(b.leverage),
-    total: rate(b.total),
-  };
-}
-
+/** Display numbers are compacted; `score_breakdown` passes through verbatim —
+ * the engine's 6 dp scores are the sanctioned ranking explanation (R13).
+ */
 function compactPosition(p: Position): Position {
   return {
     offering_id: p.offering_id,
@@ -48,7 +41,7 @@ function compactPosition(p: Position): Position {
     projected_dividend_yield: rate(p.projected_dividend_yield),
     projected_appreciation: rate(p.projected_appreciation),
     est_annual_dividend_usd: usd(p.est_annual_dividend_usd),
-    score_breakdown: compactBreakdown(p.score_breakdown),
+    score_breakdown: p.score_breakdown,
   };
 }
 
@@ -82,8 +75,10 @@ function compactOutput(output: Plan): Record<string, unknown> {
   };
 }
 
-/** The delimited context block: header (name or id), one line of compact
- * JSON (USD whole, rates/scores 4 dp), closing delimiter.
+/** The delimited context block: header (name or id), one line of compact JSON,
+ * closing delimiter. `inputs` and `score_breakdown` are serialized verbatim —
+ * the §8 clause rebuilds "starting from the attached inputs", so they must
+ * match the snapshot exactly; only other display numbers are compacted.
  */
 export function formatPlanAttachment(record: PlanRecord): string {
   const payload = {
@@ -91,14 +86,7 @@ export function formatPlanAttachment(record: PlanRecord): string {
     name: record.name,
     created_at: record.created_at,
     data_as_of: record.data_as_of,
-    inputs: {
-      amount: usd(record.inputs.amount),
-      risk_profile: record.inputs.risk_profile,
-      horizon_years: record.inputs.horizon_years,
-      existing_positions: Object.fromEntries(
-        Object.entries(record.inputs.existing_positions).map(([id, amount]) => [id, usd(amount)]),
-      ),
-    },
+    inputs: record.inputs,
     output: compactOutput(record.output),
   };
   return `[ATTACHED PLAN: ${toPlanAttachment(record).name}]\n${JSON.stringify(payload)}\n[/ATTACHED PLAN]`;

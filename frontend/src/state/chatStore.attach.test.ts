@@ -1,3 +1,5 @@
+/** Covers chatStore attachment flows: pending lifecycle, wire block vs display text, defaults. */
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { streamChat } from "../api/sse";
 import type { PlanRecord } from "../types/domain";

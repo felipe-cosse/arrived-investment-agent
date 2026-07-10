@@ -81,8 +81,8 @@ export default function App(): ReactElement {
       </header>
       <TwoPane chat={<ChatPanel />} data={<DataPanel />} />
       <footer className="border-t border-secondary/20 bg-surface px-lg py-sm text-label text-secondary">
-        Hypothetical projections, not investment advice. Offerings are seeded demo data · Data:
-        Zillow Research.
+        Hypothetical projections, not investment advice. Offerings from Arrived's public
+        catalogue (manual refresh) · Data: Zillow Research.
       </footer>
     </div>
   );
