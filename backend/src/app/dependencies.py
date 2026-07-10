@@ -138,7 +138,7 @@ def get_offerings_refresh_runner(request: Request) -> OfferingsRefreshRunner:
     state = get_state(request)
 
     def run() -> dict[str, Any]:
-        """Fetch, map, upsert the buyable Arrived catalogue; retire seeds on success."""
+        """Fetch, map, upsert the buyable Arrived catalogue; purge seeds on success."""
         catalogue = ArrivedCatalogue(state.settings.arrived_api_url)
         return refresh_offerings(catalogue, repo=state.offerings)
 

@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # Server-side truncation (R17): >= 1 so the limit can never disable truncation.
     max_history_messages: int = Field(default=40, ge=1)
     db_path: Path = Path("data/arrived.duckdb")
+    # Test/dev-only escape hatch (SEED_DEMO_DATA): when true, boot seeds the
+    # demo fixture into an empty database. The default runtime starts empty and
+    # purges any leftover seed rows — it never displays demo data (amended R21).
+    seed_demo_data: bool = False
     cors_origins: str = "http://localhost:5173"  # comma-separated; dev only
     fred_api_key: str | None = None
     census_api_key: str | None = None

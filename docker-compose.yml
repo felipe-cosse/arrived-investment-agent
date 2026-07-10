@@ -1,5 +1,6 @@
 # Two-service stack (spec §11): FastAPI api + nginx web, DuckDB on a named volume.
-# `docker compose up --build` works offline with no .env at all (R21); copy
+# `docker compose up --build` runs keyless with no .env at all — the API boots
+# empty until POST /api/admin/refresh-offerings loads the catalogue (R21); copy
 # backend/.env.example → backend/.env to enable chat and live enrichment (R23).
 
 services:
@@ -9,7 +10,7 @@ services:
       - "8000:8000"
     env_file:
       - path: backend/.env
-        required: false # seed-only offline mode needs no secrets (R21)
+        required: false # keyless operation needs no secrets (R21)
     volumes:
       - duckdb_data:/app/data
 

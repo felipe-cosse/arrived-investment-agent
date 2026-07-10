@@ -1,8 +1,10 @@
-"""Deterministic offline seed data: offerings, returns, metrics, aliases (spec §10).
+"""Deterministic offline seed fixture: offerings, returns, metrics, aliases (§10).
 
-Windows are relative to today (UTC at seed time): returns cover the 12 most recent
-complete months and seeded metrics the 24 most recent — never hard-coded ranges.
-All values derive from RNG seed 42, so the app is fully functional offline (R21).
+An offline **test fixture** (and SEED_DEMO_DATA=true dev escape hatch), never
+runtime data: the default runtime boots empty and purges seed rows (amended
+R21). Windows are relative to today (UTC at seed time): returns cover the 12
+most recent complete months and seeded metrics the 24 most recent — never
+hard-coded ranges. All values derive from RNG seed 42, so tests are hermetic.
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ _OFFERINGS: tuple[tuple[str, str, str, PropertyType, float, float, float], ...] 
     ("fund-credit", "Private Credit Fund", FUND_MARKET, "fund", 0.081, 0.000, 0.00),
 )
 
-# The seed catalogue ids, exported so the live refresh can retire them (status='closed').
+# The seed catalogue ids, exported so boot and the live refresh can purge them.
 SEED_OFFERING_IDS: tuple[str, ...] = tuple(entry[0] for entry in _OFFERINGS)
 
 

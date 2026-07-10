@@ -1,7 +1,9 @@
 """Behavioral API tests (§12): routes, SSE headers, truncation, admin refresh.
 
-Everything runs against a tmp DuckDB seeded by the lifespan; the network is
-never touched (R25) — chat uses a scripted fake LLM via dependency override.
+Everything runs against a tmp DuckDB seeded by the lifespan via the dev-only
+SEED_DEMO_DATA escape hatch (the default runtime boots empty; amended R21);
+the network is never touched (R25) — chat uses a scripted fake LLM via
+dependency override.
 """
 
 from __future__ import annotations
@@ -62,10 +64,19 @@ class _FakeSource:
 
 @pytest.fixture()
 def client(tmp_path: Path):
-    """App over a tmp DuckDB, seeded by the lifespan; no API key configured."""
-    app = create_app(Settings(anthropic_api_key=None, db_path=tmp_path / "api.duckdb"))
+    """App over a tmp DuckDB, seeded via the test-only flag; no API key configured."""
+    app = create_app(Settings(anthropic_api_key=None, db_path=tmp_path / "api.duckdb",
+                              seed_demo_data=True))
     with TestClient(app) as c:
         yield c
+
+
+def test_default_boot_starts_empty(tmp_path: Path) -> None:
+    """Default settings never seed: a fresh database serves zero offerings (R21)."""
+    app = create_app(Settings(anthropic_api_key=None, db_path=tmp_path / "empty.duckdb"))
+    with TestClient(app) as c:
+        body = c.get("/api/offerings").json()
+    assert body["count"] == 0 and body["offerings"] == []
 
 
 def test_offerings_list_and_filters(client) -> None:

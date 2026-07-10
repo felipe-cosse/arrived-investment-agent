@@ -2,7 +2,7 @@
 
 The MockTransport serves the Task-1 fixtures as the catalogue API; no test
 touches the network. Covers the design doc's contract: success report counts +
-seed retirement + idempotency, per-offering share-price failure isolation,
+seed purge + idempotency, per-offering share-price failure isolation,
 catalogue failure leaving the table untouched, the zero-buyable error, and
 catalogue pagination.
 """
@@ -27,7 +27,7 @@ from tests.infrastructure.arrived_fixtures import (
 BASE = "https://arrived.test"
 LIVE_IDS = {"arrived-maple", "arrived-birch", "arrived-dune", "arrived-haven-fund"}
 SUCCESS_REPORT = {"status": "upserted", "offerings": 4, "returns": 8,
-                  "aliases": 3, "seeds_retired": 11, "share_price_failures": 0}
+                  "aliases": 3, "seeds_purged": 11, "share_price_failures": 0}
 # The share-prices endpoint is addressed by numeric offering id, not shortName.
 _SHORT_BY_ID = {str(item["id"]): str(item["shortName"]) for item in CATALOGUE}
 
@@ -50,18 +50,21 @@ def _catalogue(handler: Callable[[httpx.Request], httpx.Response] = _api_handler
     return ArrivedCatalogue(BASE, transport=httpx.MockTransport(handler))
 
 
-def test_refresh_upserts_buyable_and_retires_seeds(repo: OfferingsRepo) -> None:
+def test_refresh_upserts_buyable_and_purges_seeds(repo: OfferingsRepo) -> None:
     assert refresh_offerings(_catalogue(), repo=repo) == SUCCESS_REPORT
-    statuses = {o.id: o.status for o in repo.list_offerings()}
-    assert {oid for oid in statuses if oid.startswith("arrived-")} == LIVE_IDS
-    assert all(statuses[oid] == "available" for oid in LIVE_IDS)
-    assert all(status == "closed" for oid, status in statuses.items() if oid not in LIVE_IDS)
+    offerings = repo.list_offerings()
+    assert {o.id for o in offerings} == LIVE_IDS  # seed rows are gone, not closed
+    assert all(o.status == "available" for o in offerings)
+    assert repo.get_returns("sfr-meridian", 60) == []  # seed history purged too
+    assert repo.stats()["market_metrics"]["rows"] == 0  # source='seed' metrics gone
+    assert repo.get_metro_for_market("Fayetteville, AR") == "fayetteville-ar"  # aliases kept
 
 
 def test_refresh_is_idempotent_on_a_second_run(repo: OfferingsRepo) -> None:
     assert refresh_offerings(_catalogue(), repo=repo) == SUCCESS_REPORT
-    assert refresh_offerings(_catalogue(), repo=repo) == SUCCESS_REPORT
-    assert len(repo.list_offerings()) == 15  # 11 closed seeds + 4 live rows, no dupes
+    second = refresh_offerings(_catalogue(), repo=repo)
+    assert second == {**SUCCESS_REPORT, "seeds_purged": 0}  # nothing left to purge
+    assert len(repo.list_offerings()) == 4  # live rows only, no dupes
 
 
 def test_share_price_failure_falls_back_and_run_continues(repo: OfferingsRepo) -> None:
@@ -76,7 +79,7 @@ def test_share_price_failure_falls_back_and_run_continues(repo: OfferingsRepo) -
     assert maple is not None and maple.status == "available"
     # No offering has a usable history left -> the mapper's final 0.0 fallback.
     assert maple.projected_appreciation == 0.0
-    assert report["seeds_retired"] == 11
+    assert report["seeds_purged"] == 11
     # R28: the degraded run is visible in the report, not just the logs.
     assert report["share_price_failures"] >= 1
 

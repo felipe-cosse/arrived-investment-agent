@@ -40,8 +40,9 @@ SYSTEM_PROMPT = (
     "- The UI renders tool results as rich components: summarize insights instead of "
     "restating rows or tables.\n"
     "- Briefly note that projections are hypothetical and not financial advice.\n"
-    "- Offerings are either seeded demo data or refreshed from Arrived's public catalogue; "
-    "market metrics may mix seeded and live sources — say so if asked about data freshness."
+    "- Offerings come from Arrived's public catalogue via manual refresh; if none are "
+    "loaded yet, tell the user to run \"Refresh live data\". Market metrics may include "
+    "live sources — say so if asked about data freshness."
 )
 
 

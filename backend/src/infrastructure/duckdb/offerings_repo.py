@@ -150,20 +150,29 @@ class OfferingsRepo:
             _upsert_sql("market_aliases", ("raw_market", "metro"), ("raw_market",)),
             [tuple(r) for r in rows])
 
-    def close_offerings(self, ids: Sequence[str]) -> int:
-        """Set status='closed' for the given offering ids; returns rows matched.
+    def purge_seed_data(self, seed_ids: Sequence[str]) -> int:
+        """Delete seed demo rows; returns the number of offerings deleted.
 
-        This is the spec's sanctioned R8 exception (besides insert/delete-only
-        plans): retiring the seed offerings after the first successful live
-        catalogue refresh is a status UPDATE, not a keyed upsert.
+        The spec's sanctioned R8 exception besides insert/delete-only plans:
+        seed data is an offline test fixture (amended R21), so boot and the
+        live catalogue refresh DELETE the seed offerings, their return
+        history, and every `source='seed'` metric row. `market_aliases` stays:
+        its raw-market -> metro mappings are factual and shared with real
+        listings (e.g. Fayetteville, AR).
         """
-        if not ids:
-            return 0
-        placeholders = ", ".join("?" for _ in ids)
-        row = self._conn.cursor().execute(
-            f"UPDATE offerings SET status = 'closed' WHERE id IN ({placeholders})",
-            list(ids)).fetchone()
-        return 0 if row is None else int(row[0])
+        cur = self._conn.cursor()
+        deleted = 0
+        if seed_ids:
+            placeholders = ", ".join("?" for _ in seed_ids)
+            cur.execute(
+                f"DELETE FROM historical_returns WHERE offering_id IN ({placeholders})",
+                list(seed_ids))
+            row = cur.execute(
+                f"DELETE FROM offerings WHERE id IN ({placeholders})",
+                list(seed_ids)).fetchone()
+            deleted = 0 if row is None else int(row[0])
+        cur.execute("DELETE FROM market_metrics WHERE source = 'seed'")
+        return deleted
 
     def _write(self, sql: str, params: list[tuple[Any, ...]]) -> int:
         """Run one upsert statement over all rows; empty input writes nothing."""

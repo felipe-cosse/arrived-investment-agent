@@ -19,7 +19,7 @@ from app.main import create_app
 
 @pytest.fixture()
 def client(tmp_path: Path):
-    """App over a tmp DuckDB, seeded by the lifespan; no API key configured."""
+    """App over a tmp DuckDB (boots empty by default); no API key configured."""
     app = create_app(Settings(anthropic_api_key=None, db_path=tmp_path / "api.duckdb"))
     with TestClient(app) as c:
         yield c
@@ -27,7 +27,7 @@ def client(tmp_path: Path):
 
 def test_refresh_offerings_returns_runner_report(client) -> None:
     report = {"status": "upserted", "offerings": 4, "returns": 8,
-              "aliases": 3, "seeds_retired": 11, "share_price_failures": 0}
+              "aliases": 3, "seeds_purged": 11, "share_price_failures": 0}
     client.app.dependency_overrides[get_offerings_refresh_runner] = lambda: (lambda: report)
     resp = client.post("/api/admin/refresh-offerings")
     assert resp.status_code == 200

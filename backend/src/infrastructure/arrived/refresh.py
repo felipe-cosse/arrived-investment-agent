@@ -2,12 +2,13 @@
 
 The runner maps the entire catalogue BEFORE any write, so a fetch or mapping
 failure reports `{"status": "error", "detail": ...}` with the database
-untouched — including the zero-buyable case, which never retires seeds. One
+untouched — including the zero-buyable case, which never purges seeds. One
 offering's share-price fetch failing only costs that offering its direct
 appreciation (the mapper's median fallback covers it; R20 spirit). Once at
-least one live offering is upserted, the seed catalog retires (status →
-'closed') — the spec's sanctioned R8 exception. The `python -m` CLI below is
-for use only while the API is stopped: DuckDB has a single writer (R6).
+least one live offering is upserted, any seed demo rows are purged (deleted;
+amended R21 — seeds are test fixtures, never runtime data) — the spec's
+sanctioned R8 exception. The `python -m` CLI below is for use only while the
+API is stopped: DuckDB has a single writer (R6).
 """
 
 from __future__ import annotations
@@ -51,10 +52,10 @@ def _share_prices(catalogue: ArrivedCatalogue,
 
 
 def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> dict[str, Any]:
-    """Fetch, map, then upsert the buyable catalogue; retire seeds on success.
+    """Fetch, map, then upsert the buyable catalogue; purge seed rows on success.
 
     Report: `{"status": "upserted", "offerings", "returns", "aliases",
-    "seeds_retired", "share_price_failures"}` on success (the failure count
+    "seeds_purged", "share_price_failures"}` on success (the failure count
     keeps degraded runs visible, R28); `{"status": "error", "detail"}` on any
     failure, with nothing written (design doc's error contract).
     """
@@ -72,16 +73,16 @@ def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> di
             "returns": repo.upsert_returns(mapped.returns),
             "aliases": repo.upsert_market_aliases(mapped.aliases),
         }
-        report["seeds_retired"] = (repo.close_offerings(SEED_OFFERING_IDS)
-                                   if report["offerings"] else 0)
+        report["seeds_purged"] = (repo.purge_seed_data(SEED_OFFERING_IDS)
+                                  if report["offerings"] else 0)
         report["share_price_failures"] = price_failures
     except Exception as exc:
         logger.exception("offerings_refresh_failed")
         return {"status": "error", "detail": str(exc)}
-    logger.info("offerings_refreshed offerings=%d returns=%d aliases=%d seeds_retired=%d "
+    logger.info("offerings_refreshed offerings=%d returns=%d aliases=%d seeds_purged=%d "
                 "share_price_failures=%d",
                 report["offerings"], report["returns"], report["aliases"],
-                report["seeds_retired"], report["share_price_failures"])
+                report["seeds_purged"], report["share_price_failures"])
     return report
 
 
