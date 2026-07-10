@@ -1,7 +1,7 @@
-"""POST /api/admin/refresh-market-data: run enabled enrichment sources (§9).
+"""Admin refresh routes: market enrichment and the live offerings catalogue (§9).
 
-Runs inside the API process — the sole DuckDB writer (R6) — and reports one
-status per source. No auth by design; §16 defers it.
+Both run inside the API process — the sole DuckDB writer (R6) — and return the
+runner's status report. No auth by design; §16 defers it.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from app.dependencies import RefreshRunnerDep
+from app.dependencies import OfferingsRefreshRunnerDep, RefreshRunnerDep
 
 router = APIRouter(prefix="/api", tags=["admin"])
 
@@ -18,4 +18,10 @@ router = APIRouter(prefix="/api", tags=["admin"])
 @router.post("/admin/refresh-market-data")
 def refresh_market_data(refresh: RefreshRunnerDep) -> dict[str, Any]:
     """Refresh market metrics; per-source `{status, rows}`, failures isolated (R20)."""
+    return refresh()
+
+
+@router.post("/admin/refresh-offerings")
+def refresh_offerings(refresh: OfferingsRefreshRunnerDep) -> dict[str, Any]:
+    """Refresh offerings from Arrived's public catalogue; upsert-or-error report (§10)."""
     return refresh()

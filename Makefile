@@ -2,7 +2,7 @@
 # Commands mirror the project's verification gates; see CLAUDE.md.
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev-api dev-web test test-backend test-frontend lint typecheck audit build verify up down logs refresh clean
+.PHONY: help install dev-api dev-web test test-backend test-frontend lint typecheck audit build verify up down logs refresh refresh-offerings clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -55,6 +55,9 @@ logs: ## Tail compose logs
 
 refresh: ## Enrichment refresh CLI — ONLY while the API is stopped (single-writer rule R6)
 	cd backend && PYTHONPATH=src uv run python -m infrastructure.enrichment.refresh
+
+refresh-offerings: ## Live Arrived catalogue refresh CLI — ONLY while the API is stopped (single-writer rule R6)
+	cd backend && PYTHONPATH=src uv run python -m infrastructure.arrived.refresh
 
 clean: ## Remove build artifacts and caches
 	rm -rf frontend/dist backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache

@@ -18,6 +18,8 @@ from fastapi import Depends, HTTPException, Request
 from app.config import Settings
 from domain.ports import MarketDataSource, OfferingReader, OfferingWriter, PlanStore
 from infrastructure.anthropic_client import create_llm_client
+from infrastructure.arrived.fetcher import ArrivedCatalogue
+from infrastructure.arrived.refresh import refresh_offerings
 from infrastructure.duckdb.connection import DuckDBConn
 from infrastructure.duckdb.offerings_repo import OfferingsRepo
 from infrastructure.duckdb.plans_repo import PlansRepo
@@ -128,8 +130,25 @@ def get_refresh_runner(
     return run
 
 
+OfferingsRefreshRunner = Callable[[], dict[str, Any]]
+
+
+def get_offerings_refresh_runner(request: Request) -> OfferingsRefreshRunner:
+    """Bind the live catalogue refresh to this process's repo and settings (R3/R6)."""
+    state = get_state(request)
+
+    def run() -> dict[str, Any]:
+        """Fetch, map, upsert the buyable Arrived catalogue; retire seeds on success."""
+        catalogue = ArrivedCatalogue(state.settings.arrived_api_url)
+        return refresh_offerings(catalogue, repo=state.offerings)
+
+    return run
+
+
 ReaderDep = Annotated[OfferingReader, Depends(get_reader)]
 PlanStoreDep = Annotated[PlanStore, Depends(get_plan_store)]
 PlanServiceDep = Annotated[PlanService, Depends(get_plan_service)]
 AgentDep = Annotated[AgentService, Depends(get_agent_service)]
 RefreshRunnerDep = Annotated[RefreshRunner, Depends(get_refresh_runner)]
+OfferingsRefreshRunnerDep = Annotated[
+    OfferingsRefreshRunner, Depends(get_offerings_refresh_runner)]

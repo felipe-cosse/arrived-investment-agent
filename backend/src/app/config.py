@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # imports infrastructure outside the composition root (§3, R3).
     zillow_zhvi_url: str | None = None
     zillow_zori_url: str | None = None
+    # Arrived's public catalogue JSON API (no key): the manual offerings
+    # refresh source (§10) behind POST /api/admin/refresh-offerings.
+    arrived_api_url: str = "https://abacus.arrivedhomes.com"
 
     @property
     def cors_origin_list(self) -> list[str]:
