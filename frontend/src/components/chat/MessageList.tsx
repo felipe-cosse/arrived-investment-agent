@@ -6,7 +6,7 @@
 import { useEffect, useRef } from "react";
 import type { ReactElement } from "react";
 import { useChatStore } from "../../state/chatStore";
-import type { ChatTurn } from "../../types/events";
+import type { ChatMessage } from "../../state/chatStore";
 
 const SUGGESTIONS = [
   "Compare Nashville vs Tucson, then invest $2,000 balanced",
@@ -14,11 +14,19 @@ const SUGGESTIONS = [
   "Build a $5,000 conservative plan over 10 years",
 ] as const;
 
-function Bubble({ turn }: { turn: ChatTurn }): ReactElement {
+function Bubble({ turn }: { turn: ChatMessage }): ReactElement {
   if (turn.role === "user") {
+    // An attached plan renders as a chip + the typed text — never the raw block.
     return (
-      <div className="ml-xl self-end rounded-md bg-accent px-md py-sm text-body text-surface shadow-sm">
-        {turn.content}
+      <div className="ml-xl flex flex-col items-end gap-sm self-end">
+        {turn.attachment !== undefined && (
+          <span className="rounded-sm bg-accent/10 px-sm text-label text-accent">
+            📎 {turn.attachment.name}
+          </span>
+        )}
+        <div className="rounded-md bg-accent px-md py-sm text-body text-surface shadow-sm">
+          {turn.display ?? turn.content}
+        </div>
       </div>
     );
   }

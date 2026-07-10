@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { shortDate, usd } from "../../lib/format";
+import { useChatStore } from "../../state/chatStore";
 import { COMPARE_LIMIT, usePlansStore } from "../../state/plansStore";
 import type { PlanRecord, SavedPlanSummary } from "../../types/domain";
 import PlanCompare from "./PlanCompare";
@@ -20,6 +21,15 @@ function Row({ plan, expanded, onToggle }: {
   const toggleCompare = usePlansStore((s) => s.toggleCompare);
   const removePlan = usePlansStore((s) => s.removePlan);
   const selected = compareSelection.includes(plan.id);
+
+  /** Attach this snapshot in the composer; a failed load surfaces through the
+   * plansStore error line and attaches nothing. */
+  const discuss = async (): Promise<void> => {
+    await usePlansStore.getState().loadPlan(plan.id);
+    const record = usePlansStore.getState().records[plan.id];
+    if (record !== undefined) useChatStore.getState().attachPlan(record);
+  };
+
   return (
     <li className="rounded-lg bg-surface p-lg shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-md">
@@ -38,6 +48,13 @@ function Row({ plan, expanded, onToggle }: {
             className="rounded-md px-sm py-sm text-label font-medium text-accent hover:bg-accent/10"
           >
             {expanded ? "Hide" : "View"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void discuss()}
+            className="rounded-md px-sm py-sm text-label font-medium text-accent hover:bg-accent/10"
+          >
+            Discuss in chat
           </button>
           <button
             type="button"
