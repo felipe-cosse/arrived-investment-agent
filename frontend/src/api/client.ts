@@ -143,3 +143,26 @@ export function fetchMeta(): Promise<Meta> {
 export function refreshMarketData(): Promise<RefreshReport> {
   return request("/admin/refresh-market-data", { method: "POST" });
 }
+
+/** POST /api/admin/refresh-offerings success report: rows written per table. */
+export interface OfferingsUpsertedReport {
+  status: "upserted";
+  offerings: number;
+  returns: number;
+  aliases: number;
+  seeds_retired: number;
+}
+
+/** POST /api/admin/refresh-offerings failure report (HTTP 200; `status` carries it). */
+export interface OfferingsRefreshErrorReport {
+  status: "error";
+  detail: string;
+}
+
+/** Refresh-offerings run report, discriminated on `status`. */
+export type OfferingsRefreshReport = OfferingsUpsertedReport | OfferingsRefreshErrorReport;
+
+/** Pull buyable offerings from Arrived's public catalogue (manual trigger). */
+export function refreshOfferings(): Promise<OfferingsRefreshReport> {
+  return request("/admin/refresh-offerings", { method: "POST" });
+}
