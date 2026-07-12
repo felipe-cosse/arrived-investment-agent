@@ -1,7 +1,7 @@
 /** zustand chat store: transcript, in-flight streaming text, tool activity, and
- * the data-panel content (§4). Every SSE event is applied through one
- * exhaustive switch (R29); typed `*_result` events become panel content the UI
- * renders as components while the transcript keeps only prose (R18).
+ * the data-panel results (§4). Every SSE event is applied through one
+ * exhaustive switch (R29); typed `*_result` events are retained in order while
+ * the transcript keeps only prose (R18).
  */
 
 import { create } from "zustand";
@@ -39,7 +39,7 @@ interface ChatState {
   streamingText: string;
   isStreaming: boolean;
   toolActivity: ToolActivity[];
-  panelContent: ResultEvent | null;
+  panelResults: ResultEvent[];
   pendingAttachment: (PlanAttachment & { block: string }) | null;
   error: string | null;
   sendMessage: (text: string) => Promise<void>;
@@ -84,8 +84,13 @@ function assertNever(event: never): never {
 }
 
 export const useChatStore = create<ChatState>()((set, get) => {
+  let activeGeneration = 0;
+  let completedGeneration = 0;
+
   /** Fold the streamed text into the transcript and unlock the composer. */
-  const finalize = (error: string | null): void => {
+  const finalize = (generation: number, error: string | null): void => {
+    if (generation !== activeGeneration || completedGeneration === generation) return;
+    completedGeneration = generation;
     set((s) => ({
       messages: s.streamingText
         ? [...s.messages, { role: "assistant" as const, content: s.streamingText }]
@@ -96,7 +101,8 @@ export const useChatStore = create<ChatState>()((set, get) => {
     }));
   };
 
-  const apply = (event: SseEvent): void => {
+  const apply = (generation: number, event: SseEvent): void => {
+    if (generation !== activeGeneration || completedGeneration === generation) return;
     switch (event.type) {
       case "text_delta":
         set((s) => ({ streamingText: s.streamingText + event.text }));
@@ -113,17 +119,20 @@ export const useChatStore = create<ChatState>()((set, get) => {
       case "plan_result":
       case "plan_saved_result":
       case "saved_plans_result":
-        set((s) => ({ toolActivity: settle(s.toolActivity, event.tool, "done"), panelContent: event }));
+        set((s) => ({
+          toolActivity: settle(s.toolActivity, event.tool, "done"),
+          panelResults: [...s.panelResults, event],
+        }));
         syncPlans(event);
         break;
       case "tool_error":
         set((s) => ({ toolActivity: settle(s.toolActivity, event.tool, "error", event.error) }));
         break;
       case "done":
-        finalize(null);
+        finalize(generation, null);
         break;
       case "error":
-        finalize(event.message);
+        finalize(generation, event.message);
         break;
       default:
         assertNever(event);
@@ -135,7 +144,7 @@ export const useChatStore = create<ChatState>()((set, get) => {
     streamingText: "",
     isStreaming: false,
     toolActivity: [],
-    panelContent: null,
+    panelResults: [],
     pendingAttachment: null,
     error: null,
 
@@ -156,21 +165,27 @@ export const useChatStore = create<ChatState>()((set, get) => {
               attachment: { id: pending.id, name: pending.name },
             };
       const messages: ChatMessage[] = [...get().messages, turn];
+      const generation = ++activeGeneration;
       set({
         messages,
         pendingAttachment: null,
         streamingText: "",
         isStreaming: true,
         toolActivity: [],
+        panelResults: [],
         error: null,
       });
       try {
-        await streamChat(messages.map(({ role, content }) => ({ role, content })), apply);
+        await streamChat(
+          messages.map(({ role, content }) => ({ role, content })),
+          (event) => apply(generation, event),
+        );
       } catch (err) {
-        finalize(errorMessage(err));
+        finalize(generation, errorMessage(err));
       }
-      // A stream that ends without a terminal event still unlocks the UI.
-      if (get().isStreaming) finalize(null);
+      if (completedGeneration !== generation) {
+        finalize(generation, "chat stream ended before a terminal event");
+      }
     },
 
     attachPlan: (record: PlanRecord): void =>
@@ -178,8 +193,8 @@ export const useChatStore = create<ChatState>()((set, get) => {
 
     clearAttachment: (): void => set({ pendingAttachment: null }),
 
-    showResult: (result: ResultEvent): void => set({ panelContent: result }),
-
+    showResult: (result: ResultEvent): void =>
+      set((s) => ({ panelResults: [...s.panelResults, result] })),
     clearError: (): void => set({ error: null }),
   };
 });

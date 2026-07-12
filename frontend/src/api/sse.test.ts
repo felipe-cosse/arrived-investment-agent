@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { createSseDecoder } from "./sse";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createSseDecoder, streamChat } from "./sse";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("createSseDecoder", () => {
   it("reassembles events split across chunk boundaries", () => {
@@ -23,5 +25,30 @@ describe("createSseDecoder", () => {
       { type: "tool_started", tool: "get_offerings", id: "t1" },
       { type: "error", message: "boom" },
     ]);
+  });
+});
+
+describe("streamChat", () => {
+  it("rejects a graceful EOF without done or error", async () => {
+    const body = 'event: text_delta\ndata: {"text":"partial"}\n\n';
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+    const events: unknown[] = [];
+
+    await expect(
+      streamChat([{ role: "user", content: "hello" }], (event) => events.push(event)),
+    ).rejects.toThrow("chat stream ended before a terminal event");
+    expect(events).toEqual([{ type: "text_delta", text: "partial" }]);
+  });
+
+  it("ignores frames after the first terminal event", async () => {
+    const body =
+      'event: done\ndata: {"stop_reason":"end_turn"}\n\n' +
+      "event: text_delta\ndata: {malformed after terminal}\n\n";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+    const events: unknown[] = [];
+
+    await streamChat([{ role: "user", content: "hello" }], (event) => events.push(event));
+
+    expect(events).toEqual([{ type: "done", stop_reason: "end_turn" }]);
   });
 });

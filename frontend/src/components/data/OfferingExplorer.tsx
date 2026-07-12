@@ -8,6 +8,7 @@ import type { ReactElement } from "react";
 import { errorMessage, fetchOffering, fetchOfferings, refreshOfferings } from "../../api/client";
 import type { OfferingDetails, OfferingFilters } from "../../api/client";
 import { shortDate } from "../../lib/format";
+import { useMetaStore } from "../../state/metaStore";
 import type { Offering } from "../../types/domain";
 import Filters from "./Filters";
 import OfferingCard from "./OfferingCard";
@@ -58,6 +59,7 @@ export default function OfferingExplorer(): ReactElement {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const reloadMeta = useMetaStore((s) => s.loadMeta);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +107,7 @@ export default function OfferingExplorer(): ReactElement {
           text: `${report.offerings} live offerings loaded${purged}${degraded}`,
         });
         setReloadKey((key) => key + 1);
+        void reloadMeta();
       })
       .catch((err: unknown) => {
         setIsRefreshing(false);

@@ -21,13 +21,15 @@ const streamChatMock = vi.mocked(streamChat);
 
 beforeEach(() => {
   streamChatMock.mockReset();
-  streamChatMock.mockResolvedValue(undefined);
+  streamChatMock.mockImplementation(async (_messages, onEvent) => {
+    onEvent({ type: "done", stop_reason: "end_turn" });
+  });
   useChatStore.setState({
     messages: [],
     streamingText: "",
     isStreaming: false,
     toolActivity: [],
-    panelContent: null,
+    panelResults: [],
     error: null,
     pendingAttachment: null,
   });

@@ -76,3 +76,28 @@ def test_save_plan_rejects_malformed_input_without_persisting(
     out = service.save_plan(amount)
     assert out["feasible"] is False
     assert plans.stats() == {"rows": 0}
+
+
+@pytest.mark.parametrize("amount", [0, -100, float("nan"), float("inf"), "nan"])
+def test_existing_position_amount_must_be_positive_and_finite(
+    service: PlanService, amount: Any,
+) -> None:
+    plan = service.build_plan(2000, existing_positions=[{
+        "offering_id": "sfr-meridian", "amount_usd": amount}])
+    assert plan["feasible"] is False
+    assert "positive finite" in plan["reason"]
+
+
+def test_duplicate_existing_position_ids_are_infeasible(service: PlanService) -> None:
+    rows = [{"offering_id": "sfr-meridian", "amount_usd": 200},
+            {"offering_id": "sfr-meridian", "amount_usd": 300}]
+    plan = service.build_plan(2000, existing_positions=rows)
+    assert plan["feasible"] is False
+    assert "duplicate offering_id" in plan["reason"]
+
+
+def test_ids_that_collide_after_normalization_are_duplicates(service: PlanService) -> None:
+    positions: Any = {1: 200, "1": 300}
+    plan = service.build_plan(2000, existing_positions=positions)
+    assert plan["feasible"] is False
+    assert "duplicate offering_id" in plan["reason"]

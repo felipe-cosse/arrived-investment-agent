@@ -3,10 +3,10 @@
  * data staleness is always visible in the header.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { ReactElement } from "react";
-import { fetchMeta } from "../../api/client";
 import { shortDate } from "../../lib/format";
+import { useMetaStore } from "../../state/metaStore";
 import type { Meta } from "../../types/domain";
 
 /** Freshest of the offerings / market-metrics timestamps; null when unseeded. */
@@ -18,27 +18,19 @@ function latestAsOf(meta: Meta): string | null {
 }
 
 export default function StalenessBadge(): ReactElement {
-  const [meta, setMeta] = useState<Meta | null>(null);
-  const [failed, setFailed] = useState(false);
+  const meta = useMetaStore((s) => s.meta);
+  const isLoading = useMetaStore((s) => s.isLoading);
+  const failed = useMetaStore((s) => s.failed);
+  const loadMeta = useMetaStore((s) => s.loadMeta);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchMeta()
-      .then((result) => {
-        if (!cancelled) setMeta(result);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadMeta();
+  }, [loadMeta]);
 
   const latest = meta === null ? null : latestAsOf(meta);
-  const label = failed
+  const label = failed && meta === null
     ? "Data status unavailable"
-    : meta === null
+    : meta === null || isLoading
       ? "Checking data freshness…"
       : `Data as of ${latest === null ? "—" : shortDate(latest)} · ${meta.offerings.rows} offerings`;
 

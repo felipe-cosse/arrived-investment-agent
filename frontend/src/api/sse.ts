@@ -32,13 +32,19 @@ function parseFrame(frame: string): SseEvent | null {
  */
 export function createSseDecoder(onEvent: SseListener): (chunk: string) => void {
   let buffer = "";
+  let terminal = false;
   return (chunk: string): void => {
+    if (terminal) return;
     buffer += chunk;
     for (let end = buffer.indexOf("\n\n"); end !== -1; end = buffer.indexOf("\n\n")) {
       const frame = buffer.slice(0, end);
       buffer = buffer.slice(end + 2);
       const event = parseFrame(frame);
-      if (event !== null) onEvent(event);
+      if (event !== null) {
+        onEvent(event);
+        terminal = event.type === "done" || event.type === "error";
+        if (terminal) return;
+      }
     }
   };
 }
@@ -68,13 +74,23 @@ export async function streamChat(
     onEvent({ type: "error", message: "chat response has no readable body" });
     return;
   }
-  const feed = createSseDecoder(onEvent);
+  let terminal = false;
+  const feed = createSseDecoder((event) => {
+    if (terminal) return;
+    onEvent(event);
+    terminal = event.type === "done" || event.type === "error";
+  });
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     feed(decoder.decode(value, { stream: true }));
+    if (terminal) {
+      await reader.cancel();
+      return;
+    }
   }
   feed(decoder.decode());
+  if (!terminal) throw new Error("chat stream ended before a terminal event");
 }

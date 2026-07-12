@@ -18,8 +18,9 @@ from infrastructure.enrichment.refresh import MissingApiKeyError
 
 logger = logging.getLogger(__name__)
 
-VINTAGE = 2023  # latest published ACS 5-year vintage at build time
+VINTAGE = 2024
 API_URL = f"https://api.census.gov/data/{VINTAGE}/acs/acs5"
+OBSERVATION_MONTH = f"{VINTAGE}-12"
 _TIMEOUT_S = 30.0
 _GEO = "metropolitan statistical area/micropolitan statistical area"
 _VARIABLES: dict[str, str] = {  # ACS variable -> market_metrics metric name
@@ -40,13 +41,6 @@ GEO_MAP: dict[str, str] = {
     "gatlinburg-tn": "42940",    # Sevierville
     "gulf-shores-al": "19300",   # Daphne-Fairhope-Foley
 }
-
-
-def _latest_complete_month(now: datetime) -> str:
-    """'YYYY-MM' of the month before `now` — ACS is annual, so rows are stamped
-    with the latest complete month to stay inside the repo's recent-months window."""
-    year, month = (now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12)
-    return f"{year:04d}-{month:02d}"
 
 
 class CensusSource:
@@ -82,7 +76,6 @@ class CensusSource:
                cbsa_to_metro: dict[str, str]) -> list[MetricRow]:
         """Turn the Census header+rows matrix into MetricRows, dropping sentinels."""
         as_of = datetime.now(UTC)
-        month = _latest_complete_month(as_of)
         header, *records = matrix
         index = {column: header.index(column) for column in (*_VARIABLES, _GEO)}
         rows: list[MetricRow] = []
@@ -94,6 +87,6 @@ class CensusSource:
                 raw = record[index[variable]]
                 if raw is None or float(raw) < 0:
                     continue  # Census encodes suppressed values as null or negative sentinels
-                rows.append(MetricRow(metro=metro, month=month, source=self.name,
+                rows.append(MetricRow(metro=metro, month=OBSERVATION_MONTH, source=self.name,
                                       metric=metric, value=float(raw), as_of=as_of))
         return rows

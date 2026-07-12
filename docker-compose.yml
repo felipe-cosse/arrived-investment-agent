@@ -7,7 +7,10 @@ services:
   api:
     build: ./backend
     ports:
-      - "8000:8000"
+      # Personal/local research app: never publish the unauthenticated API to
+      # LAN or internet interfaces. Remote deployments need an authenticated
+      # reverse proxy instead of widening this binding.
+      - "127.0.0.1:8000:8000"
     env_file:
       - path: backend/.env
         required: false # keyless operation needs no secrets (R21)
@@ -17,7 +20,7 @@ services:
   web:
     build: ./frontend
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
     depends_on:
       api:
         condition: service_healthy # gated by the api image HEALTHCHECK (§11)

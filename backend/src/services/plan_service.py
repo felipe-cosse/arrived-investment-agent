@@ -28,12 +28,34 @@ ExistingPositions = list[dict[str, Any]] | dict[str, float] | None
 
 
 def _normalize_existing(existing: ExistingPositions) -> dict[str, float] | None:
-    """Accept the tool-schema list form or a plain dict; None passes through."""
+    """Normalize positive finite holdings and reject ambiguous duplicate ids."""
     if existing is None:
         return None
     if isinstance(existing, dict):
-        return {str(k): float(v) for k, v in existing.items()}
-    return {str(row["offering_id"]): float(row["amount_usd"]) for row in existing}
+        raw_positions = list(existing.items())
+    elif isinstance(existing, list):
+        raw_positions = []
+        for row in existing:
+            if not isinstance(row, dict):
+                raise TypeError("must contain only object rows")
+            raw_positions.append((row["offering_id"], row["amount_usd"]))
+    else:
+        raise TypeError("must be a list of position rows or an id-to-amount object")
+
+    positions: dict[str, float] = {}
+    for raw_id, raw_amount in raw_positions:
+        offering_id = str(raw_id).strip()
+        if not offering_id:
+            raise ValueError("offering_id must not be empty")
+        if offering_id in positions:
+            raise ValueError(f"contains duplicate offering_id: {offering_id}")
+        if isinstance(raw_amount, bool):
+            raise TypeError(f"amount_usd for {offering_id} must be a number")
+        amount = float(raw_amount)
+        if not math.isfinite(amount) or amount <= 0:
+            raise ValueError(f"amount_usd for {offering_id} must be finite and greater than zero")
+        positions[offering_id] = amount
+    return positions
 
 
 def _coerce_request(amount: Any, horizon_years: Any, existing: ExistingPositions,
@@ -56,9 +78,9 @@ def _coerce_request(amount: Any, horizon_years: Any, existing: ExistingPositions
         return f"horizon_years must be a whole number, got {horizon_years!r}"
     try:
         positions = _normalize_existing(existing)
-    except (TypeError, ValueError, KeyError):
-        return ("existing_positions must be a list of {offering_id, amount_usd} "
-                "rows with numeric amounts")
+    except (TypeError, ValueError, KeyError, OverflowError) as exc:
+        return ("existing_positions must be unique {offering_id, amount_usd} rows "
+                f"with positive finite amounts: {exc}")
     return amount_f, horizon, positions
 
 

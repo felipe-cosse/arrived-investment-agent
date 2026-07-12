@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from pydantic import Field
 
 from app.api.routes_plan import PlanRequest
 from app.dependencies import PlanServiceDep, PlanStoreDep
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["plans"])
 class SavePlanRequest(PlanRequest):
     """POST /api/plans body: plan inputs plus an optional snapshot name."""
 
-    name: str | None = None
+    name: str | None = Field(default=None, max_length=120)
 
 
 @router.post("/plans", status_code=201)

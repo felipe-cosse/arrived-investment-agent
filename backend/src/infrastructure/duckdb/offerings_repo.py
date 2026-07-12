@@ -150,6 +150,15 @@ class OfferingsRepo:
             _upsert_sql("market_aliases", ("raw_market", "metro"), ("raw_market",)),
             [tuple(r) for r in rows])
 
+    def replace_live_catalogue(
+        self, offerings: Sequence[Offering], returns: Sequence[ReturnRecord],
+        aliases: Sequence[tuple[str, str]], seed_ids: Sequence[str],
+    ) -> dict[str, int]:
+        """Atomically replace the buyable Arrived snapshot and purge demo rows."""
+        from infrastructure.duckdb.catalogue_snapshot import replace_live_catalogue
+
+        return replace_live_catalogue(self._conn, offerings, returns, aliases, seed_ids)
+
     def purge_seed_data(self, seed_ids: Sequence[str]) -> int:
         """Delete seed demo rows; returns the number of offerings deleted.
 

@@ -9,8 +9,10 @@ through the FastAPI `Depends` providers below and never build adapters (R2/R4).
 from __future__ import annotations
 
 import logging
+from _thread import LockType
 from collections.abc import Callable
 from dataclasses import dataclass
+from threading import Lock
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, HTTPException, Request
@@ -46,6 +48,7 @@ class AppState:
     dispatcher: ToolDispatcher
     agent: AgentService | None
     sources: list[MarketDataSource]
+    refresh_lock: LockType
 
 
 def build_state(settings: Settings) -> AppState:
@@ -72,7 +75,7 @@ def build_state(settings: Settings) -> AppState:
         fred_api_key=settings.fred_api_key, census_api_key=settings.census_api_key)
     return AppState(settings=settings, conn=conn, offerings=offerings, plans=plans,
                     plan_service=plan_service, dispatcher=dispatcher, agent=agent,
-                    sources=sources)
+                    sources=sources, refresh_lock=Lock())
 
 
 def get_state(request: Request) -> AppState:
@@ -117,15 +120,19 @@ def get_agent_service(request: Request) -> AgentService:
 
 
 def get_refresh_runner(
+    request: Request,
     sources: Annotated[list[MarketDataSource], Depends(get_sources)],
     reader: Annotated[OfferingReader, Depends(get_reader)],
     writer: Annotated[OfferingWriter, Depends(get_writer)],
 ) -> RefreshRunner:
     """Bind the enrichment refresh to this process's sources and repos (R3/R6)."""
 
+    lock = get_state(request).refresh_lock
+
     def run() -> dict[str, dict[str, Any]]:
         """Run every enabled source with per-source isolation (R20)."""
-        return refresh_all(sources, reader=reader, writer=writer)
+        with lock:
+            return refresh_all(sources, reader=reader, writer=writer)
 
     return run
 
@@ -140,7 +147,8 @@ def get_offerings_refresh_runner(request: Request) -> OfferingsRefreshRunner:
     def run() -> dict[str, Any]:
         """Fetch, map, upsert the buyable Arrived catalogue; purge seeds on success."""
         catalogue = ArrivedCatalogue(state.settings.arrived_api_url)
-        return refresh_offerings(catalogue, repo=state.offerings)
+        with state.refresh_lock:
+            return refresh_offerings(catalogue, repo=state.offerings)
 
     return run
 

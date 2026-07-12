@@ -10,11 +10,14 @@ catalogue pagination.
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 import httpx
+import pytest
 
 from infrastructure.arrived.fetcher import ArrivedCatalogue
 from infrastructure.arrived.refresh import refresh_offerings
+from infrastructure.duckdb import catalogue_snapshot
 from infrastructure.duckdb.offerings_repo import OfferingsRepo
 from tests.infrastructure.arrived_fixtures import (
     CATALOGUE,
@@ -65,6 +68,53 @@ def test_refresh_is_idempotent_on_a_second_run(repo: OfferingsRepo) -> None:
     second = refresh_offerings(_catalogue(), repo=repo)
     assert second == {**SUCCESS_REPORT, "seeds_purged": 0}  # nothing left to purge
     assert len(repo.list_offerings()) == 4  # live rows only, no dupes
+
+
+def test_refresh_removes_live_offerings_absent_from_next_snapshot(repo: OfferingsRepo) -> None:
+    assert refresh_offerings(_catalogue(), repo=repo)["status"] == "upserted"
+    assert repo.get_returns("arrived-maple", 60)
+    reduced = [item for item in CATALOGUE if item["shortName"] != "maple"]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/offerings/search":
+            return httpx.Response(200, json={
+                "pagination": {"totalResults": len(reduced)}, "data": reduced})
+        return _api_handler(request)
+
+    report = refresh_offerings(_catalogue(handler), repo=repo)
+    assert report["status"] == "upserted" and report["offerings"] == 3
+    assert repo.get_offering("arrived-maple") is None
+    assert repo.get_returns("arrived-maple", 60) == []
+
+
+def test_refresh_rolls_back_every_write_on_mid_transaction_failure(
+    repo: OfferingsRepo, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert refresh_offerings(_catalogue(), repo=repo)["status"] == "upserted"
+    baseline = repo.get_offering("arrived-maple")
+    assert baseline is not None
+    changed = [{**item, "name": "Changed Mid-Refresh"}
+               if item["shortName"] == "maple" else item for item in CATALOGUE]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/offerings/search":
+            return httpx.Response(200, json={
+                "pagination": {"totalResults": len(changed)}, "data": changed})
+        return _api_handler(request)
+
+    original = catalogue_snapshot._upsert
+
+    def fail_on_returns(*args: Any, **kwargs: Any) -> int:
+        if args[1] == "historical_returns":
+            raise RuntimeError("forced returns failure")
+        return int(original(*args, **kwargs))
+
+    monkeypatch.setattr(catalogue_snapshot, "_upsert", fail_on_returns)
+    report = refresh_offerings(_catalogue(handler), repo=repo)
+    assert report == {"status": "error", "detail": "forced returns failure"}
+    current = repo.get_offering("arrived-maple")
+    assert current is not None and current.name == baseline.name
+    assert {offering.id for offering in repo.list_offerings()} == LIVE_IDS
 
 
 def test_share_price_failure_falls_back_and_run_continues(repo: OfferingsRepo) -> None:

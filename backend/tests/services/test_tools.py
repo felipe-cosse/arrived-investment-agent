@@ -45,6 +45,12 @@ def test_definitions_cover_every_tool(dispatcher: ToolDispatcher) -> None:
     for definition in dispatcher.definitions:
         assert definition["description"]
         assert definition["input_schema"]["type"] == "object"
+    plan_schema = next(d for d in dispatcher.definitions
+                       if d["name"] == "build_investment_plan")["input_schema"]
+    existing = plan_schema["properties"]["existing_positions"]
+    assert existing["uniqueItems"] is True
+    assert existing["items"]["properties"]["amount_usd"]["exclusiveMinimum"] == 0
+    assert existing["items"]["properties"]["offering_id"]["minLength"] == 1
 
 
 def test_get_offerings_unfiltered_and_filtered(dispatcher: ToolDispatcher) -> None:

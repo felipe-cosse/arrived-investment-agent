@@ -4,7 +4,7 @@
  * the chat panel's transcript is untouched.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { errorMessage, savePlan } from "../../api/client";
 import { streamChat } from "../../api/sse";
@@ -24,26 +24,51 @@ const FIELD_CLASS =
 const BUTTON_PRIMARY =
   "rounded-md bg-accent px-md py-sm text-body font-medium text-surface shadow-sm transition-opacity disabled:opacity-50";
 
-export default function AiPlanBuilder(): ReactElement {
+export default function AiPlanBuilder({ active }: { active: boolean }): ReactElement {
   const [goal, setGoal] = useState("");
   const [state, setState] = useState<AiPlanState>(INITIAL_AI_PLAN_STATE);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [savedAs, setSavedAs] = useState<string | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
   const ingestRecord = usePlansStore((s) => s.ingestRecord);
 
+  useEffect(() => () => activeRequest.current?.abort(), []);
+
+  useEffect(() => {
+    if (active) return;
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setBusy(false);
+  }, [active]);
+
   const build = async (): Promise<void> => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setBusy(true);
     setSavedAs(null);
     setState(INITIAL_AI_PLAN_STATE);
     try {
-      await streamChat(buildGoalMessage(goal), (event) =>
-        setState((prev) => reduceAiPlanEvent(prev, event)),
+      await streamChat(
+        buildGoalMessage(goal),
+        (event) => {
+          if (!controller.signal.aborted) {
+            setState((prev) => reduceAiPlanEvent(prev, event));
+          }
+        },
+        controller.signal,
       );
     } catch (err) {
-      setState((prev) => ({ ...prev, error: errorMessage(err) }));
+      if (!controller.signal.aborted) {
+        setState((prev) => ({ ...prev, error: errorMessage(err) }));
+      }
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        if (!controller.signal.aborted) setBusy(false);
+      }
     }
-    setBusy(false);
   };
 
   const save = async (): Promise<void> => {

@@ -1,14 +1,13 @@
-"""Live catalogue refresh: fetch buyable Arrived offerings and upsert them (§10).
+"""Live catalogue refresh: fetch and atomically replace Arrived offerings (§10).
 
 The runner maps the entire catalogue BEFORE any write, so a fetch or mapping
 failure reports `{"status": "error", "detail": ...}` with the database
 untouched — including the zero-buyable case, which never purges seeds. One
 offering's share-price fetch failing only costs that offering its direct
-appreciation (the mapper's median fallback covers it; R20 spirit). Once at
-least one live offering is upserted, any seed demo rows are purged (deleted;
-amended R21 — seeds are test fixtures, never runtime data) — the spec's
-sanctioned R8 exception. The `python -m` CLI below is for use only while the
-API is stopped: DuckDB has a single writer (R6).
+appreciation (the mapper's median fallback covers it; R20 spirit). A successful
+write reconciles the complete buyable snapshot, deletes absent live rows, and
+purges demo seeds in one transaction. The `python -m` CLI below is for use only
+while the API is stopped: DuckDB has a single writer (R6).
 """
 
 from __future__ import annotations
@@ -67,14 +66,9 @@ def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> di
         if not mapped.offerings:
             logger.warning("offerings_refresh_empty raw_items=%d", len(raw))
             return {"status": "error", "detail": "no buyable offerings found"}
-        report: dict[str, Any] = {
-            "status": "upserted",
-            "offerings": repo.upsert_offerings(mapped.offerings),
-            "returns": repo.upsert_returns(mapped.returns),
-            "aliases": repo.upsert_market_aliases(mapped.aliases),
-        }
-        report["seeds_purged"] = (repo.purge_seed_data(SEED_OFFERING_IDS)
-                                  if report["offerings"] else 0)
+        counts = repo.replace_live_catalogue(
+            mapped.offerings, mapped.returns, mapped.aliases, SEED_OFFERING_IDS)
+        report: dict[str, Any] = {"status": "upserted", **counts}
         report["share_price_failures"] = price_failures
     except Exception as exc:
         logger.exception("offerings_refresh_failed")

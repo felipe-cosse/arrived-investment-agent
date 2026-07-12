@@ -26,15 +26,32 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
 ];
 
 function DataPanel(): ReactElement {
-  const panelContent = useChatStore((s) => s.panelContent);
+  const panelResults = useChatStore((s) => s.panelResults);
   const [tab, setTab] = useState<Tab>("explore");
+  const [visited, setVisited] = useState<ReadonlySet<Tab>>(
+    () => new Set<Tab>(["explore"]),
+  );
 
   // Each new typed result event brings the agent's output into view (R18).
   useEffect(() => {
-    if (panelContent !== null) setTab("agent");
-  }, [panelContent]);
+    if (panelResults.length === 0) {
+      setTab((current) => (current === "agent" ? "explore" : current));
+      return;
+    }
+    setVisited((current) =>
+      current.has("agent") ? current : new Set([...current, "agent"]),
+    );
+    setTab("agent");
+  }, [panelResults.length]);
 
-  const tabs = TABS.filter((t) => t.id !== "agent" || panelContent !== null);
+  const visit = (next: Tab): void => {
+    setVisited((current) =>
+      current.has(next) ? current : new Set([...current, next]),
+    );
+    setTab(next);
+  };
+
+  const tabs = TABS.filter((t) => t.id !== "agent" || panelResults.length > 0);
   return (
     <div className="flex flex-col gap-lg">
       <nav aria-label="Data panel views" className="flex flex-wrap gap-sm">
@@ -43,7 +60,7 @@ function DataPanel(): ReactElement {
             key={t.id}
             type="button"
             aria-current={tab === t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => visit(t.id)}
             className={`rounded-md px-md py-sm text-label font-medium transition-colors ${
               tab === t.id
                 ? "bg-accent text-surface shadow-sm"
@@ -54,20 +71,48 @@ function DataPanel(): ReactElement {
           </button>
         ))}
       </nav>
-      {tab === "agent" && panelContent !== null && <ResultPanel event={panelContent} />}
-      {tab === "explore" && <OfferingExplorer />}
-      {tab === "plan" && (
-        <div className="flex flex-col gap-lg">
+      {visited.has("agent") && (
+        <section
+          aria-hidden={tab !== "agent"}
+          className={tab === "agent" ? "" : "hidden"}
+        >
+          <div className="flex flex-col gap-xl">
+            {panelResults.map((event, index) => (
+              <ResultPanel key={`${event.type}-${index}`} event={event} />
+            ))}
+          </div>
+        </section>
+      )}
+      {visited.has("explore") && (
+        <section
+          aria-hidden={tab !== "explore"}
+          className={tab === "explore" ? "" : "hidden"}
+        >
+          <OfferingExplorer />
+        </section>
+      )}
+      {visited.has("plan") && (
+        <section
+          aria-hidden={tab !== "plan"}
+          className={tab === "plan" ? "flex flex-col gap-lg" : "hidden"}
+        >
           <PlanBuilder />
           <div role="separator" className="flex items-center gap-md text-label text-secondary">
             <span className="h-px flex-1 bg-secondary/20" />
             or describe your goal
             <span className="h-px flex-1 bg-secondary/20" />
           </div>
-          <AiPlanBuilder />
-        </div>
+          <AiPlanBuilder active={tab === "plan"} />
+        </section>
       )}
-      {tab === "saved" && <SavedPlans />}
+      {visited.has("saved") && (
+        <section
+          aria-hidden={tab !== "saved"}
+          className={tab === "saved" ? "" : "hidden"}
+        >
+          <SavedPlans />
+        </section>
+      )}
     </div>
   );
 }

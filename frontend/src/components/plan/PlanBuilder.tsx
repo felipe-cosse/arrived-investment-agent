@@ -4,9 +4,10 @@
  * engine's reason, never an exception (R12).
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { buildPlan, errorMessage, savePlan } from "../../api/client";
+import type { PlanRequest } from "../../api/client";
 import { usePlansStore } from "../../state/plansStore";
 import type { Plan, RiskProfile } from "../../types/domain";
 import PlanSummary from "./PlanSummary";
@@ -19,42 +20,62 @@ const FIELD_CLASS =
 const BUTTON_PRIMARY =
   "rounded-md bg-accent px-md py-sm text-body font-medium text-surface shadow-sm transition-opacity disabled:opacity-50";
 
+interface BuiltPlan {
+  request: PlanRequest;
+  output: Plan;
+}
+
 export default function PlanBuilder(): ReactElement {
   const [amount, setAmount] = useState("2000");
   const [risk, setRisk] = useState<RiskProfile>("balanced");
   const [horizon, setHorizon] = useState("5");
   const [name, setName] = useState("");
-  const [plan, setPlan] = useState<Plan | null>(null);
+  const [built, setBuilt] = useState<BuiltPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAs, setSavedAs] = useState<string | null>(null);
+  const requestVersion = useRef(0);
   const ingestRecord = usePlansStore((s) => s.ingestRecord);
 
-  const request = {
-    amount: Number(amount),
-    risk_profile: risk,
-    horizon_years: Number(horizon),
+  const invalidateBuild = (): void => {
+    requestVersion.current += 1;
+    setBuilt(null);
+    setError(null);
+    setSavedAs(null);
   };
 
   const build = async (): Promise<void> => {
+    const request: PlanRequest = {
+      amount: Number(amount),
+      risk_profile: risk,
+      horizon_years: Number(horizon),
+    };
+    const version = ++requestVersion.current;
     setBusy(true);
     setError(null);
     setSavedAs(null);
+    setBuilt(null);
     try {
-      setPlan(await buildPlan(request));
+      const output = await buildPlan(request);
+      if (requestVersion.current === version) setBuilt({ request, output });
     } catch (err) {
-      setError(errorMessage(err));
+      if (requestVersion.current === version) setError(errorMessage(err));
     }
     setBusy(false);
   };
 
   const save = async (): Promise<void> => {
+    if (built === null) return;
+    const snapshot = built;
     setBusy(true);
     setError(null);
     try {
-      const record = await savePlan({ ...request, name: name.trim() || undefined });
+      const record = await savePlan({ ...snapshot.request, name: name.trim() || undefined });
       ingestRecord(record);
       setSavedAs(record.name ?? record.id);
+      setBuilt((current) =>
+        current === snapshot ? { request: snapshot.request, output: record.output } : current,
+      );
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -72,7 +93,18 @@ export default function PlanBuilder(): ReactElement {
       >
         <label className="flex flex-col gap-sm text-label text-secondary">
           Amount (USD)
-          <input type="number" min={100} step={10} required value={amount} onChange={(e) => setAmount(e.target.value)} className={`${FIELD_CLASS} w-32`} />
+          <input
+            type="number"
+            min={100}
+            step={10}
+            required
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              invalidateBuild();
+            }}
+            className={`${FIELD_CLASS} w-32`}
+          />
         </label>
         <label className="flex flex-col gap-sm text-label text-secondary">
           Risk profile
@@ -80,7 +112,10 @@ export default function PlanBuilder(): ReactElement {
             value={risk}
             onChange={(e) => {
               const value = RISK_PROFILES.find((p) => p === e.target.value);
-              if (value !== undefined) setRisk(value);
+              if (value !== undefined) {
+                setRisk(value);
+                invalidateBuild();
+              }
             }}
             className={FIELD_CLASS}
           >
@@ -93,7 +128,18 @@ export default function PlanBuilder(): ReactElement {
         </label>
         <label className="flex flex-col gap-sm text-label text-secondary">
           Horizon (years)
-          <input type="number" min={1} max={30} required value={horizon} onChange={(e) => setHorizon(e.target.value)} className={`${FIELD_CLASS} w-24`} />
+          <input
+            type="number"
+            min={1}
+            max={30}
+            required
+            value={horizon}
+            onChange={(e) => {
+              setHorizon(e.target.value);
+              invalidateBuild();
+            }}
+            className={`${FIELD_CLASS} w-24`}
+          />
         </label>
         <button type="submit" disabled={busy} className={BUTTON_PRIMARY}>
           Build plan
@@ -104,7 +150,7 @@ export default function PlanBuilder(): ReactElement {
           {error}
         </p>
       )}
-      {plan !== null && plan.feasible && (
+      {built !== null && built.output.feasible && (
         <div className="flex flex-wrap items-end gap-md rounded-lg bg-surface p-lg shadow-sm">
           <label className="flex min-w-0 flex-1 flex-col gap-sm text-label text-secondary">
             Snapshot name (optional)
@@ -120,7 +166,7 @@ export default function PlanBuilder(): ReactElement {
           )}
         </div>
       )}
-      {plan !== null && <PlanSummary plan={plan} />}
+      {built !== null && <PlanSummary plan={built.output} />}
     </div>
   );
 }

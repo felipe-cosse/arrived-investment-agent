@@ -1,7 +1,8 @@
 """Admin refresh routes: market enrichment and the live offerings catalogue (§9).
 
 Both run inside the API process — the sole DuckDB writer (R6) — and return the
-runner's status report. No auth by design; §16 defers it.
+runner's status report. They have no route-level auth, so the supported Compose
+deployment binds the API to loopback; §16 defers authenticated remote access.
 """
 
 from __future__ import annotations

@@ -126,8 +126,13 @@ def test_census_parses_population_and_income_skipping_sentinels() -> None:
         ["Nashville-Davidson--Murfreesboro--Franklin, TN", "2100000", "75000", "34980"],
         ["Tucson, AZ", "-666666666", "58000", "46060"],  # suppressed population sentinel
     ]
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, text=json.dumps(matrix)))
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, text=json.dumps(matrix))
+
+    transport = httpx.MockTransport(handler)
     source = CensusSource("test-key", transport=transport)
     rows = source.fetch(["nashville-tn", "tucson-az", "not-a-mapped-metro"])
     got = {(r.metro, r.metric): r.value for r in rows}
@@ -135,6 +140,8 @@ def test_census_parses_population_and_income_skipping_sentinels() -> None:
                    ("nashville-tn", "median_income"): 75000.0,
                    ("tucson-az", "median_income"): 58000.0}
     assert all(r.source == "census_acs" for r in rows)
+    assert all(r.month == "2024-12" for r in rows)
+    assert "/data/2024/acs/acs5" in str(seen[0].url)
     assert all(re.fullmatch(r"\d{4}-\d{2}", r.month) for r in rows)
 
 

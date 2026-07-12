@@ -43,6 +43,10 @@ docker compose -f docker-compose.yml up --build   # or: make up-prod
 
 Then open the app and click **Refresh live data** on the Explore tab to load the current Arrived catalogue. Everything except the chat works without any API key.
 
+The Compose stack binds both published ports to `127.0.0.1` because the API is
+intended for personal, local use. Do not expose it on a LAN or the internet
+without adding authentication and rate limiting in front of every `/api` route.
+
 To enable the chat agent, put your key in `backend/.env` (see `backend/.env.example`):
 
 ```

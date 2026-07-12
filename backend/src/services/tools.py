@@ -33,11 +33,13 @@ _PLAN_PROPS: dict[str, Any] = {
                       "description": f"Projection horizon; defaults to {DEFAULT_HORIZON_YEARS}."},
     "existing_positions": {
         "type": "array",
-        "description": "Money already invested, per offering.",
+        "description": "Money already invested; each offering_id must appear only once.",
+        "uniqueItems": True,
         "items": {"type": "object",
-                  "properties": {"offering_id": {"type": "string"},
-                                 "amount_usd": {"type": "number"}},
-                  "required": ["offering_id", "amount_usd"]},
+                  "properties": {"offering_id": {"type": "string", "minLength": 1},
+                                 "amount_usd": {"type": "number", "exclusiveMinimum": 0}},
+                  "required": ["offering_id", "amount_usd"],
+                  "additionalProperties": False},
     },
 }
 
