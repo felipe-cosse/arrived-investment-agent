@@ -10,6 +10,7 @@ import PlanSummary from "../plan/PlanSummary";
 import SavedPlans from "../plan/SavedPlans";
 import MarketContextCard from "./MarketContextCard";
 import OfferingCard from "./OfferingCard";
+import OfferingDetail from "./OfferingDetail";
 import ReturnsChart from "./ReturnsChart";
 
 /** Compile-time backstop: a new ResultEvent variant fails here first (R29). */
@@ -28,12 +29,7 @@ function body(event: ResultEvent): ReactElement {
         </div>
       );
     case "offering_details_result":
-      return (
-        <div className="grid gap-lg lg:grid-cols-2">
-          <OfferingCard offering={event.result.offering} />
-          <ReturnsChart returns={event.result.history} title="Last 12 months" />
-        </div>
-      );
+      return <OfferingDetail details={event.result} />;
     case "returns_result":
       return (
         <ReturnsChart

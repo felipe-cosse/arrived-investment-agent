@@ -31,6 +31,15 @@ _VARIABLES: dict[str, str] = {  # ACS variable -> market_metrics metric name
 # Canonical metro slug -> CBSA code (R11). Markets without their own CBSA use
 # the covering metro, mirroring zillow.py's REGION_MAP.
 GEO_MAP: dict[str, str] = {
+    "albuquerque-nm": "10740",
+    "fort-smith-ar": "22900",
+    "goshen-oh": "17140",       # Cincinnati
+    "knoxville-tn": "28940",
+    "louisville-ky": "31140",   # Louisville/Jefferson County
+    "lynnwood-wa": "42660",     # Seattle-Tacoma-Bellevue
+    "nesbit-ms": "32820",       # Memphis
+    "ooltewah-tn": "16860",     # Chattanooga
+    "southaven-ms": "32820",    # Memphis
     "nashville-tn": "34980",
     "chattanooga-tn": "16860",
     "tucson-az": "46060",
@@ -58,35 +67,41 @@ class CensusSource:
         """Population and median-income rows per mapped metro from one ACS request."""
         if not self._api_key:
             raise MissingApiKeyError("CENSUS_API_KEY unset")
-        cbsa_to_metro = {GEO_MAP[m]: m for m in metros if m in GEO_MAP}
-        if not cbsa_to_metro:
+        cbsa_to_metros: dict[str, list[str]] = {}
+        for metro in metros:
+            cbsa = GEO_MAP.get(metro)
+            if cbsa is not None:
+                cbsa_to_metros.setdefault(cbsa, []).append(metro)
+        if not cbsa_to_metros:
             return []
         with httpx.Client(transport=self._transport, timeout=_TIMEOUT_S) as client:
             response = client.get(API_URL, params={
                 "get": "NAME," + ",".join(_VARIABLES),
-                "for": f"{_GEO}:{','.join(sorted(cbsa_to_metro))}",
+                "for": f"{_GEO}:{','.join(sorted(cbsa_to_metros))}",
                 "key": self._api_key,
             })
             response.raise_for_status()
-        rows = self._parse(response.json(), cbsa_to_metro)
-        logger.info("census_fetched metros=%d rows=%d", len(cbsa_to_metro), len(rows))
+        rows = self._parse(response.json(), cbsa_to_metros)
+        logger.info("census_fetched metros=%d rows=%d", len(metros), len(rows))
         return rows
 
     def _parse(self, matrix: list[list[str | None]],
-               cbsa_to_metro: dict[str, str]) -> list[MetricRow]:
+               cbsa_to_metros: dict[str, list[str]]) -> list[MetricRow]:
         """Turn the Census header+rows matrix into MetricRows, dropping sentinels."""
         as_of = datetime.now(UTC)
         header, *records = matrix
         index = {column: header.index(column) for column in (*_VARIABLES, _GEO)}
         rows: list[MetricRow] = []
         for record in records:
-            metro = cbsa_to_metro.get(str(record[index[_GEO]]))
-            if metro is None:
+            metros = cbsa_to_metros.get(str(record[index[_GEO]]))
+            if metros is None:
                 continue
             for variable, metric in _VARIABLES.items():
                 raw = record[index[variable]]
                 if raw is None or float(raw) < 0:
                     continue  # Census encodes suppressed values as null or negative sentinels
-                rows.append(MetricRow(metro=metro, month=OBSERVATION_MONTH, source=self.name,
-                                      metric=metric, value=float(raw), as_of=as_of))
+                for metro in metros:
+                    rows.append(MetricRow(metro=metro, month=OBSERVATION_MONTH,
+                                          source=self.name, metric=metric,
+                                          value=float(raw), as_of=as_of))
         return rows

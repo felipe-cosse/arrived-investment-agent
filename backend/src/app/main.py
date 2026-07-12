@@ -24,6 +24,7 @@ from app.api import (
     routes_offerings,
     routes_plan,
     routes_plans,
+    routes_region,
 )
 from app.config import Settings
 from app.dependencies import build_state
@@ -58,7 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if origins:  # dev only (§13); the nginx proxy makes prod same-origin
         app.add_middleware(CORSMiddleware, allow_origins=origins,
                            allow_methods=["*"], allow_headers=["*"])
-    for module in (routes_offerings, routes_plan, routes_plans,
+    for module in (routes_offerings, routes_region, routes_plan, routes_plans,
                    routes_chat, routes_admin, routes_meta):
         app.include_router(module.router)
     return app

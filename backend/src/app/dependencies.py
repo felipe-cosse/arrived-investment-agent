@@ -29,6 +29,7 @@ from infrastructure.enrichment.refresh import build_sources, refresh_all
 from services.agent_service import AgentService
 from services.market_service import MarketService
 from services.plan_service import PlanService
+from services.region_info_service import RegionInfoService
 from services.tools import ToolDispatcher
 
 logger = logging.getLogger(__name__)
@@ -103,6 +104,11 @@ def get_plan_service(request: Request) -> PlanService:
     return get_state(request).plan_service
 
 
+def get_region_info_service(reader: Annotated[OfferingReader, Depends(get_reader)]) -> RegionInfoService:
+    """Source-backed metro information assembled from persisted enrichment rows."""
+    return RegionInfoService(reader)
+
+
 def get_sources(request: Request) -> list[MarketDataSource]:
     """Enabled enrichment sources; the override point for tests (R25)."""
     return list(get_state(request).sources)
@@ -156,6 +162,7 @@ def get_offerings_refresh_runner(request: Request) -> OfferingsRefreshRunner:
 ReaderDep = Annotated[OfferingReader, Depends(get_reader)]
 PlanStoreDep = Annotated[PlanStore, Depends(get_plan_store)]
 PlanServiceDep = Annotated[PlanService, Depends(get_plan_service)]
+RegionInfoDep = Annotated[RegionInfoService, Depends(get_region_info_service)]
 AgentDep = Annotated[AgentService, Depends(get_agent_service)]
 RefreshRunnerDep = Annotated[RefreshRunner, Depends(get_refresh_runner)]
 OfferingsRefreshRunnerDep = Annotated[

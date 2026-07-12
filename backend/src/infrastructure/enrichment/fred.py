@@ -28,6 +28,15 @@ _MISSING_VALUE = "."  # FRED's placeholder for an absent observation
 # (measure 03 = unemployment rate, not seasonally adjusted). Markets without
 # their own CBSA use the covering metro, mirroring zillow.py's REGION_MAP.
 SERIES_MAP: dict[str, str] = {
+    "albuquerque-nm": "LAUMT351074000000003",     # Albuquerque 10740
+    "fort-smith-ar": "LAUMT052290000000003",      # Fort Smith 22900
+    "goshen-oh": "LAUMT391714000000003",          # Cincinnati 17140
+    "knoxville-tn": "LAUMT472894000000003",       # Knoxville 28940
+    "louisville-ky": "LAUMT213114000000003",      # Louisville 31140
+    "lynnwood-wa": "LAUMT534266000000003",        # Seattle 42660
+    "nesbit-ms": "LAUMT473282000000003",          # Memphis 32820
+    "ooltewah-tn": "LAUMT471686000000003",        # Chattanooga 16860
+    "southaven-ms": "LAUMT473282000000003",       # Memphis 32820
     "nashville-tn": "LAUMT473498000000003",       # Nashville-Davidson--Murfreesboro 34980
     "chattanooga-tn": "LAUMT471686000000003",     # Chattanooga 16860
     "tucson-az": "LAUMT044606000000003",          # Tucson 46060
@@ -57,16 +66,18 @@ class FredSource:
             raise MissingApiKeyError("FRED_API_KEY unset")
         as_of = datetime.now(UTC)
         rows: list[MetricRow] = []
+        series_to_metros: dict[str, list[str]] = {}
+        for metro in metros:
+            series_id = SERIES_MAP.get(metro)
+            if series_id is not None:
+                series_to_metros.setdefault(series_id, []).append(metro)
         with httpx.Client(transport=self._transport, timeout=_TIMEOUT_S) as client:
-            for metro in metros:
-                series_id = SERIES_MAP.get(metro)
-                if series_id is None:
-                    continue  # unmapped metros are simply omitted, never an error (R14)
-                rows.extend(self._series(client, metro, series_id, as_of))
+            for series_id, mapped_metros in series_to_metros.items():
+                rows.extend(self._series(client, mapped_metros, series_id, as_of))
         logger.info("fred_fetched metros=%d rows=%d", len({r.metro for r in rows}), len(rows))
         return rows
 
-    def _series(self, client: httpx.Client, metro: str, series_id: str,
+    def _series(self, client: httpx.Client, metros: list[str], series_id: str,
                 as_of: datetime) -> list[MetricRow]:
         """Fetch one series and keep its most recent non-missing observations."""
         response = client.get(API_URL, params={
@@ -77,4 +88,4 @@ class FredSource:
         observations = response.json()["observations"][-MONTHS_KEPT:]
         return [MetricRow(metro=metro, month=str(obs["date"])[:7], source=self.name,
                           metric="unemployment_rate", value=float(obs["value"]), as_of=as_of)
-                for obs in observations if obs["value"] != _MISSING_VALUE]
+                for obs in observations if obs["value"] != _MISSING_VALUE for metro in metros]

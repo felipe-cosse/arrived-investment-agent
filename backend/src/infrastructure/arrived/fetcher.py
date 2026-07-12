@@ -63,6 +63,13 @@ class ArrivedCatalogue:
             body = self._get(client, f"/offerings/{offering_id}/share-prices")
         return list(body.get("data") or [])
 
+    def fetch_offering_detail(self, offering_id: int) -> dict[str, Any]:
+        """One offering's richer public detail row, unwrapped from `data`."""
+        with self._client() as client:
+            body = self._get(client, f"/offerings/{offering_id}")
+        data = body.get("data") or {}
+        return dict(data) if isinstance(data, dict) else {}
+
     def _client(self) -> httpx.Client:
         """A configured client; short-lived because refreshes are manual and rare."""
         return httpx.Client(base_url=self._base_url, headers=_HEADERS,

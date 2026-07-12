@@ -50,19 +50,38 @@ def _share_prices(catalogue: ArrivedCatalogue,
     return histories, failures
 
 
+def _offering_details(catalogue: ArrivedCatalogue,
+                      buyable: list[dict[str, Any]],
+                      ) -> tuple[list[dict[str, Any]], int]:
+    """Merge public detail rows into search rows; isolate per-offering failures."""
+    enriched: list[dict[str, Any]] = []
+    failures = 0
+    for item in buyable:
+        try:
+            detail = catalogue.fetch_offering_detail(int(item["id"]))
+            enriched.append({**item, **detail})
+        except Exception:
+            failures += 1
+            enriched.append(item)
+            logger.exception("offering_detail_failed short_name=%s", item.get("shortName"))
+    return enriched, failures
+
+
 def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> dict[str, Any]:
     """Fetch, map, then upsert the buyable catalogue; purge seed rows on success.
 
-    Report: `{"status": "upserted", "offerings", "returns", "aliases",
-    "seeds_purged", "share_price_failures"}` on success (the failure count
-    keeps degraded runs visible, R28); `{"status": "error", "detail"}` on any
+    Report: `{"status": "upserted", ..., "share_price_failures",
+    "detail_failures"}` on success (failure counts keep degraded runs visible,
+    R28); `{"status": "error", "detail"}` on any
     failure, with nothing written (design doc's error contract).
     """
     try:
         raw = catalogue.fetch_catalogue()
         buyable = [item for item in raw if item.get("status") in BUYABLE_STATUSES]
-        histories, price_failures = _share_prices(catalogue, buyable)
-        mapped = map_offerings(raw, histories, datetime.now(UTC))
+        detailed, detail_failures = _offering_details(catalogue, buyable)
+        histories, price_failures = _share_prices(catalogue, detailed)
+        non_buyable = [item for item in raw if item.get("status") not in BUYABLE_STATUSES]
+        mapped = map_offerings([*detailed, *non_buyable], histories, datetime.now(UTC))
         if not mapped.offerings:
             logger.warning("offerings_refresh_empty raw_items=%d", len(raw))
             return {"status": "error", "detail": "no buyable offerings found"}
@@ -70,13 +89,15 @@ def refresh_offerings(catalogue: ArrivedCatalogue, *, repo: OfferingsRepo) -> di
             mapped.offerings, mapped.returns, mapped.aliases, SEED_OFFERING_IDS)
         report: dict[str, Any] = {"status": "upserted", **counts}
         report["share_price_failures"] = price_failures
+        report["detail_failures"] = detail_failures
     except Exception as exc:
         logger.exception("offerings_refresh_failed")
         return {"status": "error", "detail": str(exc)}
     logger.info("offerings_refreshed offerings=%d returns=%d aliases=%d seeds_purged=%d "
-                "share_price_failures=%d",
+                "share_price_failures=%d detail_failures=%d",
                 report["offerings"], report["returns"], report["aliases"],
-                report["seeds_purged"], report["share_price_failures"])
+                report["seeds_purged"], report["share_price_failures"],
+                report["detail_failures"])
     return report
 
 

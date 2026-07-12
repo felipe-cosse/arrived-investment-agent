@@ -7,12 +7,11 @@ import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { errorMessage, fetchOffering, fetchOfferings, refreshOfferings } from "../../api/client";
 import type { OfferingDetails, OfferingFilters } from "../../api/client";
-import { shortDate } from "../../lib/format";
 import { useMetaStore } from "../../state/metaStore";
 import type { Offering } from "../../types/domain";
 import Filters from "./Filters";
 import OfferingCard from "./OfferingCard";
-import ReturnsChart from "./ReturnsChart";
+import OfferingDetail from "./OfferingDetail";
 
 const REFRESH_BUTTON_CLASS =
   "rounded-md bg-accent px-md py-sm text-body font-medium text-surface shadow-sm transition-opacity disabled:opacity-50";
@@ -21,32 +20,6 @@ const REFRESH_BUTTON_CLASS =
 interface RefreshStatus {
   kind: "success" | "error";
   text: string;
-}
-
-function Detail({ details, onBack }: {
-  details: OfferingDetails;
-  onBack: () => void;
-}): ReactElement {
-  return (
-    <div className="flex flex-col gap-lg">
-      <div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-md px-sm py-sm text-label font-medium text-accent hover:bg-accent/10"
-        >
-          ← All offerings
-        </button>
-      </div>
-      <div className="grid gap-lg lg:grid-cols-2">
-        <OfferingCard offering={details.offering} />
-        <ReturnsChart returns={details.history} title="Last 12 months" />
-      </div>
-      <p className="text-label text-secondary">
-        Offering data as of {shortDate(details.offering.as_of)} (Arrived catalogue data).
-      </p>
-    </div>
-  );
 }
 
 export default function OfferingExplorer(): ReactElement {
@@ -102,9 +75,13 @@ export default function OfferingExplorer(): ReactElement {
           report.share_price_failures > 0
             ? ` · ${report.share_price_failures} price histories unavailable`
             : "";
+        const missingDetails =
+          report.detail_failures > 0
+            ? ` · ${report.detail_failures} detail records unavailable`
+            : "";
         setRefreshStatus({
           kind: "success",
-          text: `${report.offerings} live offerings loaded${purged}${degraded}`,
+          text: `${report.offerings} live offerings loaded${purged}${degraded}${missingDetails}`,
         });
         setReloadKey((key) => key + 1);
         void reloadMeta();
@@ -123,7 +100,7 @@ export default function OfferingExplorer(): ReactElement {
   };
 
   if (details !== null) {
-    return <Detail details={details} onBack={() => setDetails(null)} />;
+    return <OfferingDetail details={details} onBack={() => setDetails(null)} />;
   }
   const hasFilters = Object.values(filters).some((value) => value !== undefined);
   return (

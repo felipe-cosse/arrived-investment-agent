@@ -15,6 +15,7 @@ from statistics import median
 from typing import Any, NamedTuple
 
 from domain.models import Offering, PropertyType, ReturnRecord
+from infrastructure.arrived.details import offering_details
 from infrastructure.seed import FUND_MARKET, slugify_market
 
 # The catalogue statuses the site shows as buyable ("Available"/"New"/"Almost Gone").
@@ -90,7 +91,10 @@ def _funded_pct(item: RawItem) -> float | None:
 
 
 def _direct_yield(item: RawItem) -> float | None:
-    """Annualized dividendPerShare*12/sharePrice, or None before the first dividend."""
+    """Arrived projection, then annualized latest dividend, or None when unavailable."""
+    projected = _number(item.get("projectedAnnualDividendYield"))
+    if projected is not None and projected > 0:
+        return projected
     dividend = _number((item.get("latestDividend") or {}).get("dividendPerShare"))
     share_price = _number(item.get("sharePrice"))
     if dividend is None or dividend <= 0 or share_price is None or share_price <= 0:
@@ -174,7 +178,7 @@ def map_offerings(raw: list[RawItem], share_prices: dict[str, list[RawItem]],
     aliases: dict[str, str] = {}
     for item, ptype, direct_yield, direct_appr, history in prepared:
         offering_id = f"arrived-{item['shortName']}"
-        market = _market(item)
+        market = FUND_MARKET if ptype == "fund" else _market(item)
         offerings.append(Offering(
             id=offering_id, name=str(item["name"]), market=market, property_type=ptype,
             status="available", share_price_usd=float(item["sharePrice"]),
@@ -183,7 +187,7 @@ def map_offerings(raw: list[RawItem], share_prices: dict[str, list[RawItem]],
             projected_appreciation=_with_fallback(direct_appr, ptype, apprs_by_type),
             funded_pct=_funded_pct(item),
             property_value_usd=_property_value(item),
-            leverage_pct=_leverage(item), as_of=as_of))
+            leverage_pct=_leverage(item), **offering_details(item), as_of=as_of))
         returns.extend(_return_rows(offering_id, history, item.get("latestDividend")))
         if market != FUND_MARKET and market not in aliases:
             aliases[market] = slugify_market(market)

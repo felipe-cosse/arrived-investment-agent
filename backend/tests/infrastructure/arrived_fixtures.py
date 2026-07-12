@@ -3,8 +3,8 @@
 Field names are verbatim from the 2026-07-09 reconnaissance: id, shortName,
 name, status, type, assetType, sharePrice, minTransactionAmount, fundedPercent,
 targetRaiseAmount, totalPurchasePrice, latestDividend{dividendPerShare, endDate},
-properties[0]{purchasePrice, address{city, province}}. Tests never touch the
-network (R25); these dicts stand in for the catalogue and share-price endpoints.
+investorsCount, quarterlyAumFeeAmount, costs, and detailed property facts.
+Tests never touch the network (R25); these dicts stand in for the public endpoints.
 """
 
 from __future__ import annotations
@@ -22,11 +22,26 @@ LTR_WITH_DIVIDEND: dict[str, Any] = {
     "sharePrice": 10.0,
     "minTransactionAmount": 100.0,
     "fundedPercent": 42.5,
+    "description": "An occupied four-bedroom home in Northwest Arkansas.",
+    "thumbnailPhotoUrl": "https://cdn.arrivedhomes.com/properties/802/maple.jpg",
+    "investorsCount": 921,
     "targetRaiseAmount": 150_000.0,
     "totalPurchasePrice": 300_000.0,
+    "quarterlyAumFeeAmount": 480.0,
+    "closingOfferingAndHoldingCosts": 21_512.0,
+    "propertyImprovementsAndCashReserves": 28_000.0,
+    "holdPeriodYearsMin": 5,
+    "holdPeriodYearsMax": 7,
+    "debtAmount": 150_000.0,
+    "debtInterestPercent": 5.625,
     "latestDividend": {"dividendPerShare": 0.05, "endDate": "2026-06-30"},
-    "properties": [{"purchasePrice": 325_000.0,
-                    "address": {"city": "Nashville", "province": "US-TN"}}],
+    "properties": [{"purchasePrice": 325_000.0, "rent": 1_995.0,
+                    "bedrooms": 4, "fullBathrooms": 3, "halfBathrooms": 1,
+                    "squareFootage": 2_021, "yearBuilt": 2018,
+                    "leaseStatus": "OCCUPIED", "leaseEndAt": "2028-02-29T00:00:00.000Z",
+                    "address": {"street": "5066 West Claxton Circle",
+                                "city": "Nashville", "province": "US-TN",
+                                "zipCode": "72704"}}],
 }
 
 # Buyable long-term rental before its first dividend: yield falls back to the

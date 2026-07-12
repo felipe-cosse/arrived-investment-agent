@@ -23,6 +23,28 @@ export interface Offering {
   funded_pct: number | null;
   property_value_usd: number | null;
   leverage_pct: number | null;
+  source_url: string | null;
+  thumbnail_url: string | null;
+  description: string | null;
+  purchase_price_usd: number | null;
+  monthly_rent_usd: number | null;
+  annual_rent_usd: number | null;
+  annual_platform_fee_usd: number | null;
+  closing_offering_holding_costs_usd: number | null;
+  property_improvements_reserves_usd: number | null;
+  investor_count: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  square_feet: number | null;
+  year_built: number | null;
+  street_address: string | null;
+  postal_code: string | null;
+  lease_status: string | null;
+  lease_end_date: string | null;
+  hold_period_min_years: number | null;
+  hold_period_max_years: number | null;
+  debt_amount_usd: number | null;
+  debt_interest_pct: number | null;
   as_of: string;
 }
 
@@ -43,6 +65,28 @@ export interface MarketContext {
   population: number | null;
   median_income: number | null;
   momentum: number;
+}
+
+/** One source-backed observation in an offering's mapped metro area. */
+export interface RegionMetric {
+  metric: string;
+  label: string;
+  value: number;
+  unit: "usd" | "usd_per_month" | "usd_per_year" | "percent" | "people";
+  observation_month: string;
+  retrieved_at: string;
+  source: { id: string; name: string; url: string };
+}
+
+/** Stored public-data snapshot for an offering; never property-level evidence. */
+export interface RegionInfo {
+  offering_id: string;
+  market: string;
+  metro: string | null;
+  scope: "metro_area" | null;
+  available: boolean;
+  metrics: RegionMetric[];
+  disclaimer: string;
 }
 
 /** Per-position score components — the sanctioned way to explain rankings (R13). */

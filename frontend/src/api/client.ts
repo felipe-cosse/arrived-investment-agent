@@ -8,6 +8,7 @@ import type {
   Plan,
   PlanRecord,
   RefreshReport,
+  RegionInfo,
   ReturnRecord,
   SavedPlanSummary,
 } from "../types/domain";
@@ -108,6 +109,11 @@ export function fetchOffering(id: string): Promise<OfferingDetails> {
   return request(`/offerings/${encodeURIComponent(id)}`);
 }
 
+/** Stored Zillow/FRED/Census observations for an offering's mapped metro area. */
+export function fetchRegionInfo(id: string): Promise<RegionInfo> {
+  return request(`/offerings/${encodeURIComponent(id)}/region-info`);
+}
+
 /** Run the deterministic planner; infeasible inputs return a Plan, not an error (R12). */
 export function buildPlan(body: PlanRequest): Promise<Plan> {
   return request("/plan", jsonInit("POST", body));
@@ -152,6 +158,7 @@ export interface OfferingsUpsertedReport {
   aliases: number;
   seeds_purged: number;
   share_price_failures: number;
+  detail_failures: number;
 }
 
 /** POST /api/admin/refresh-offerings failure report (HTTP 200; `status` carries it). */

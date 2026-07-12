@@ -30,7 +30,7 @@ ZHVI_DEFAULT_URL = (
 )
 ZORI_DEFAULT_URL = (
     "https://files.zillowstatic.com/research/public_csvs/zori/"
-    "Metro_zori_uc_sfrcondo_sm_sa_month.csv"
+    "Metro_zori_uc_sfrcondomfr_sm_sa_month.csv"
 )
 
 # Latest month plus 12 back fits the YoY window (§7) with margin; keeping the
@@ -43,8 +43,19 @@ _DATE_COLUMN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # Canonical metro slug -> Zillow metro RegionName (R11). Offering markets that
 # are not themselves Zillow metros map to the metro that covers them:
 # Joshua Tree sits in San Bernardino County (Riverside metro), Gatlinburg in
-# Sevier County (Sevierville metro), Gulf Shores in Baldwin County (Daphne metro).
+# Sevier County (Sevierville metro), Gulf Shores in Baldwin County (Daphne metro),
+# Goshen in Cincinnati, Lynnwood in Seattle, Nesbit/Southaven in Memphis, and
+# Ooltewah in Chattanooga.
 REGION_MAP: dict[str, str] = {
+    "albuquerque-nm": "Albuquerque, NM",
+    "fort-smith-ar": "Fort Smith, AR",
+    "goshen-oh": "Cincinnati, OH",
+    "knoxville-tn": "Knoxville, TN",
+    "louisville-ky": "Louisville, KY",
+    "lynnwood-wa": "Seattle, WA",
+    "nesbit-ms": "Memphis, TN",
+    "ooltewah-tn": "Chattanooga, TN",
+    "southaven-ms": "Memphis, TN",
     "nashville-tn": "Nashville, TN",
     "chattanooga-tn": "Chattanooga, TN",
     "tucson-az": "Tucson, AZ",
@@ -70,7 +81,11 @@ class ZillowSource:
 
     def fetch(self, metros: list[str]) -> list[MetricRow]:
         """Download the CSV and emit recent monthly rows for the mapped, requested metros."""
-        wanted = {REGION_MAP[m]: m for m in metros if m in REGION_MAP}
+        wanted: dict[str, list[str]] = {}
+        for metro in metros:
+            region = REGION_MAP.get(metro)
+            if region is not None:
+                wanted.setdefault(region, []).append(metro)
         with httpx.Client(transport=self._transport, timeout=_TIMEOUT_S,
                           follow_redirects=True) as client:
             response = client.get(self._url)
@@ -80,20 +95,21 @@ class ZillowSource:
                     self.name, len(wanted), len(rows))
         return rows
 
-    def _parse(self, text: str, wanted: dict[str, str]) -> list[MetricRow]:
+    def _parse(self, text: str, wanted: dict[str, list[str]]) -> list[MetricRow]:
         """Rows for wanted RegionNames over the MONTHS_KEPT most recent month columns."""
         as_of = datetime.now(UTC)
         reader = csv.DictReader(io.StringIO(text))
         date_columns = sorted(c for c in (reader.fieldnames or []) if _DATE_COLUMN.match(c))
         rows: list[MetricRow] = []
         for record in reader:
-            metro = wanted.get(record.get("RegionName", ""))
-            if metro is None:
+            metros = wanted.get(record.get("RegionName", ""))
+            if metros is None:
                 continue
             for column in date_columns[-MONTHS_KEPT:]:
                 cell = (record.get(column) or "").strip()
                 if not cell:
                     continue  # Zillow leaves months blank before a region's coverage starts
-                rows.append(MetricRow(metro=metro, month=column[:7], source=self.name,
-                                      metric=self._metric, value=float(cell), as_of=as_of))
+                for metro in metros:
+                    rows.append(MetricRow(metro=metro, month=column[:7], source=self.name,
+                                          metric=self._metric, value=float(cell), as_of=as_of))
         return rows

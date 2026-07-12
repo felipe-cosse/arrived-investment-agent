@@ -12,12 +12,8 @@ from typing import Any
 
 from domain.models import MetricRow, Offering, ReturnRecord
 from infrastructure.duckdb.connection import DuckDBConn
+from infrastructure.duckdb.offering_columns import OFFERING_COLS as _OFFERING_COLS
 
-_OFFERING_COLS: tuple[str, ...] = (
-    "id", "name", "market", "property_type", "status", "share_price_usd",
-    "min_investment_usd", "projected_dividend_yield", "projected_appreciation",
-    "funded_pct", "property_value_usd", "leverage_pct", "as_of",
-)
 _RETURN_COLS: tuple[str, ...] = ("offering_id", "month", "dividend_per_share", "share_value_usd")
 _METRIC_COLS: tuple[str, ...] = ("metro", "month", "source", "metric", "value", "as_of")
 

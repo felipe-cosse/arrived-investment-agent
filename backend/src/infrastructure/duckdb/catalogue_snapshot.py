@@ -53,20 +53,18 @@ def replace_live_catalogue(
 ) -> dict[str, int]:
     """Commit one complete live snapshot or roll every catalogue write back."""
     # Imported lazily to avoid a module cycle with OfferingsRepo's small delegate.
-    from infrastructure.duckdb.offerings_repo import (
-        _OFFERING_COLS,
-        _RETURN_COLS,
-    )
+    from infrastructure.duckdb.offering_columns import OFFERING_COLS
+    from infrastructure.duckdb.offerings_repo import _RETURN_COLS
 
     cur = conn.cursor()
     live_ids = [row.id for row in offerings]
-    offering_values = [tuple(row.model_dump()[column] for column in _OFFERING_COLS)
+    offering_values = [tuple(row.model_dump()[column] for column in OFFERING_COLS)
                        for row in offerings]
     return_values = [tuple(row.model_dump()[column] for column in _RETURN_COLS)
                      for row in returns]
     try:
         cur.execute("BEGIN TRANSACTION")
-        offering_count = _upsert(cur, "offerings", _OFFERING_COLS, ("id",),
+        offering_count = _upsert(cur, "offerings", OFFERING_COLS, ("id",),
                                  offering_values)
         return_count = _upsert(cur, "historical_returns", _RETURN_COLS,
                                ("offering_id", "month"), return_values)

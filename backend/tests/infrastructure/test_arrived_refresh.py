@@ -30,7 +30,8 @@ from tests.infrastructure.arrived_fixtures import (
 BASE = "https://arrived.test"
 LIVE_IDS = {"arrived-maple", "arrived-birch", "arrived-dune", "arrived-haven-fund"}
 SUCCESS_REPORT = {"status": "upserted", "offerings": 4, "returns": 8,
-                  "aliases": 3, "seeds_purged": 11, "share_price_failures": 0}
+                  "aliases": 3, "seeds_purged": 11, "share_price_failures": 0,
+                  "detail_failures": 0}
 # The share-prices endpoint is addressed by numeric offering id, not shortName.
 _SHORT_BY_ID = {str(item["id"]): str(item["shortName"]) for item in CATALOGUE}
 
@@ -45,6 +46,10 @@ def _api_handler(request: httpx.Request) -> httpx.Response:
         if short_name is None:
             return httpx.Response(400)  # the real API rejects non-numeric ids
         return httpx.Response(200, json={"data": SHARE_PRICES.get(short_name, [])})
+    if path.startswith("/offerings/"):
+        item_id = path.split("/")[2]
+        item = next((row for row in CATALOGUE if str(row["id"]) == item_id), None)
+        return httpx.Response(200, json={"data": item}) if item else httpx.Response(404)
     return httpx.Response(404)
 
 
@@ -61,6 +66,9 @@ def test_refresh_upserts_buyable_and_purges_seeds(repo: OfferingsRepo) -> None:
     assert repo.get_returns("sfr-meridian", 60) == []  # seed history purged too
     assert repo.stats()["market_metrics"]["rows"] == 0  # source='seed' metrics gone
     assert repo.get_metro_for_market("Fayetteville, AR") == "fayetteville-ar"  # aliases kept
+    maple = repo.get_offering("arrived-maple")
+    assert maple is not None
+    assert maple.monthly_rent_usd == 1_995.0 and maple.investor_count == 921
 
 
 def test_refresh_is_idempotent_on_a_second_run(repo: OfferingsRepo) -> None:
@@ -132,6 +140,19 @@ def test_share_price_failure_falls_back_and_run_continues(repo: OfferingsRepo) -
     assert report["seeds_purged"] == 11
     # R28: the degraded run is visible in the report, not just the logs.
     assert report["share_price_failures"] >= 1
+
+
+def test_detail_failure_keeps_search_fields_and_run_continues(repo: OfferingsRepo) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == f"/offerings/{LTR_WITH_DIVIDEND['id']}":
+            return httpx.Response(500)
+        return _api_handler(request)
+
+    report = refresh_offerings(_catalogue(handler), repo=repo)
+    assert report["status"] == "upserted" and report["detail_failures"] == 1
+    maple = repo.get_offering("arrived-maple")
+    assert maple is not None
+    assert maple.source_url == "https://arrived.com/properties/maple"
 
 
 def test_catalogue_failure_reports_error_and_writes_nothing(repo: OfferingsRepo) -> None:

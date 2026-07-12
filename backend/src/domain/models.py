@@ -28,6 +28,28 @@ class Offering(BaseModel):
     funded_pct: float | None = None
     property_value_usd: float | None = None
     leverage_pct: float | None = None
+    source_url: str | None = None
+    thumbnail_url: str | None = None
+    description: str | None = None
+    purchase_price_usd: float | None = None
+    monthly_rent_usd: float | None = None
+    annual_rent_usd: float | None = None
+    annual_platform_fee_usd: float | None = None
+    closing_offering_holding_costs_usd: float | None = None
+    property_improvements_reserves_usd: float | None = None
+    investor_count: int | None = None
+    bedrooms: int | None = None
+    bathrooms: float | None = None
+    square_feet: int | None = None
+    year_built: int | None = None
+    street_address: str | None = None
+    postal_code: str | None = None
+    lease_status: str | None = None
+    lease_end_date: str | None = None
+    hold_period_min_years: int | None = None
+    hold_period_max_years: int | None = None
+    debt_amount_usd: float | None = None
+    debt_interest_pct: float | None = None  # Arrived percentage points: 5.625 means 5.625%
     as_of: datetime
 
 

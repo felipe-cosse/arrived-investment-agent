@@ -8,13 +8,13 @@ An AI-assisted explorer for fractional real-estate offerings, modeled on [Arrive
 
 ## What it does
 
-- **Live offering data** — a manual "Refresh live data" action ingests currently-buyable listings (Available / New / Almost Gone) from Arrived's public catalogue JSON API. Fully-funded listings are excluded. Yields derive from real dividends, appreciation from real share-price history. No fake data: the app starts empty and only ever shows the real catalogue.
+- **Live offering data** — a manual "Refresh live data" action ingests currently-buyable listings (Available / New / Almost Gone) from Arrived's public JSON API. Cards and detail views include the original Arrived link, imagery, rent, purchase price, investors, lease/property facts, explicitly labeled fees and costs, and funding progress. Fully-funded listings are excluded; no fake data is shown.
 - **Chat agent** (Claude, via the Anthropic API) — answers questions about offerings and markets by calling typed tools. It never invents numbers or does allocation math; the UI renders each tool result as a rich component (cards, charts, plan views).
 - **Deterministic planner** — pure-Python allocation engine: risk-profile score weights (yield, appreciation, market momentum, leverage penalty), per-position caps, market diversification limits, a vacation-rental share cap, and a fund floor. Same inputs → byte-identical plan, always. Every position carries a score breakdown so "why is X ranked above Y?" has a data answer.
 - **Three ways to build a plan** — the form (amount / risk / horizon), a natural-language goal box ("$5k for steady income, fairly cautious, ~5 years" → the AI picks parameters and calls the engine), or just asking in chat.
 - **Plan attachments** — attach a saved plan to the chat (📎 in the composer, or "Discuss in chat" on any saved plan) and ask questions about it or request changes; the agent rebuilds from the plan's exact inputs and offers to save the result as a new snapshot.
 - **Immutable snapshots + compare** — saved plans capture inputs, full output, and data freshness; later data refreshes never mutate them. A compare view renders two snapshots side by side.
-- **Market enrichment** — Zillow Research home-value/rent indexes (no key needed), FRED unemployment and Census demographics (optional keys) feed a bounded "momentum" tilt in scoring — never a gate.
+- **Market enrichment** — Zillow Research home-value/rent indexes (no key needed), FRED unemployment and Census demographics (optional keys) feed a bounded "momentum" tilt in scoring — never a gate. Offering details can load the stored public observations with source links and dates; these describe mapped metro areas, not individual properties or neighborhoods.
 
 ![Plan view](images/plan.png)
 
@@ -83,7 +83,7 @@ The backend suite runs fully offline — external fetchers are tested against mo
 
 ## Data sources & fair use
 
-- **Arrived public catalogue** — fetched politely (one catalogue request plus one share-price request per buyable offering, only when you click refresh; permitted by robots.txt). This project stores a small derived snapshot for personal research.
+- **Arrived public catalogue** — fetched politely (one catalogue request plus detail and share-price requests per buyable offering, only when you click refresh; permitted by robots.txt). Annual gross rent is monthly rent × 12; annual AUM fees and one-time costs remain separate because the catalogue does not provide a total annual operating-expense figure. This project stores a small derived snapshot for personal research.
 - **Zillow Research** — home value (ZHVI) and rent (ZORI) indexes. Data: Zillow Research.
 - **FRED / U.S. Census ACS** — optional metro unemployment and demographics.
 

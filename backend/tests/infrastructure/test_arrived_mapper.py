@@ -1,7 +1,6 @@
 """Behavioral tests for the Arrived catalogue mapper (live-data design doc).
 
-Pure-function coverage over offline fixture dicts (R25): the buyable-status
-filter, every mapping-table rule, the yield and appreciation fallback chains,
+Pure offline coverage (R25): buyable status, mapping and fallback chains,
 the leverage clamp, historical-returns rows, and alias generation.
 """
 
@@ -85,6 +84,12 @@ def test_market_strips_us_prefix_and_funds_are_diversified() -> None:
     assert by_id["arrived-haven-fund"].market == "Diversified"
 
 
+def test_fund_with_properties_does_not_claim_its_first_house_market() -> None:
+    property_fund = _variant(FUND_OFFERING, properties=LTR_WITH_DIVIDEND["properties"])
+    offering = map_offerings([property_fund], {}, AS_OF).offerings[0]
+    assert offering.market == "Diversified"
+
+
 def test_property_type_mapping() -> None:
     by_id = _by_id()
     assert by_id["arrived-maple"].property_type == "single_family"
@@ -102,6 +107,12 @@ def test_yield_derives_from_latest_dividend() -> None:
     assert by_id["arrived-maple"].projected_dividend_yield == pytest.approx(0.06)
     assert by_id["arrived-dune"].projected_dividend_yield == pytest.approx(0.08)
     assert by_id["arrived-haven-fund"].projected_dividend_yield == pytest.approx(0.09)
+
+
+def test_yield_prefers_arrived_projection_when_present() -> None:
+    projected = _variant(LTR_WITH_DIVIDEND, projectedAnnualDividendYield=0.047)
+    offering = map_offerings([projected], {}, AS_OF).offerings[0]
+    assert offering.projected_dividend_yield == pytest.approx(0.047)
 
 
 def test_yield_fallback_uses_same_type_median_not_all_median() -> None:
